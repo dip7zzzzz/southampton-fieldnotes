@@ -400,8 +400,12 @@ const activeCells = new Set(
 for (const v of venues) for (const c of v.catchment) activeCells.add(c.cell);
 const cells: Cell[] = [...activeCells].map((id) => {
   const polygon = cellPolygon(id),
-    [x, y] = id.split(":").map((n) => Number(n) * 250),
-    centre = unproject([x + 125, y + 125]);
+    [x, y] = id.split(":").map((n) => Number(n) * ASSUMPTIONS.cellMetres),
+    centreXY: Position = [
+      x + ASSUMPTIONS.cellMetres / 2,
+      y + ASSUMPTIONS.cellMetres / 2,
+    ],
+    centre = unproject(centreXY);
   const nodes = graph.nodes
     .map((n, i) => ({ n, i }))
     .filter(
@@ -409,9 +413,7 @@ const cells: Cell[] = [...activeCells].map((id) => {
     );
   const node =
     nodes.sort(
-      (a, b) =>
-        distance(a.n.xy, [x + 125, y + 125]) -
-        distance(b.n.xy, [x + 125, y + 125]),
+      (a, b) => distance(a.n.xy, centreXY) - distance(b.n.xy, centreXY),
     )[0]?.i ?? 0;
   const nearby = venues
     .filter((v) => v.catchment.some((c) => c.cell === id))
@@ -650,6 +652,7 @@ const sources: SourceRecord[] = [
 const dataset: Dataset = {
   version: "",
   modelVersion: MODEL_VERSION,
+  cellMetres: ASSUMPTIONS.cellMetres,
   preparedAt: new Date().toISOString(),
   osmAt: rawVenues.payload.osm3s.timestamp_osm_base,
   venues,
@@ -661,6 +664,7 @@ const dataset: Dataset = {
   calendars,
   demographics: demographicBaseline(),
   reference: {
+    cellMetres: ASSUMPTIONS.cellMetres,
     version: "reference-0.1",
     values: [],
     frozenAt: "",
@@ -685,6 +689,13 @@ try {
 } catch {
   /* Initial frozen reference below. */
 }
+if (
+  dataset.reference.values.length &&
+  (dataset.reference.cellMetres ?? 250) !== ASSUMPTIONS.cellMetres
+)
+  throw new Error(
+    "Grid resolution changed: explicitly regenerate its reference with --rebaseline.",
+  );
 if (!dataset.reference.values.length) {
   const values: number[] = [];
   for (let weekday = 1; weekday <= 7; weekday++)
@@ -708,7 +719,10 @@ if (!dataset.reference.values.length) {
         for (const c of venue.catchment)
           scores.set(c.cell, (scores.get(c.cell) ?? 0) + c.weight * value);
       }
-      for (const cell of cells) values.push(scores.get(cell.id) ?? 0);
+      // Keep the reference population to cells with model anchors, matching the
+      // original reference universe; unsupported areas do not inflate percentiles.
+      for (const cell of cells.filter((c) => c.venueIds.length))
+        values.push(scores.get(cell.id) ?? 0);
     }
   // A compact deterministic quantile grid keeps payload size manageable.
   values.sort((a, b) => a - b);

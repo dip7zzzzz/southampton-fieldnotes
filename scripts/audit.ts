@@ -272,7 +272,7 @@ const sources = readdirSync("data/raw")
     };
   });
 const mismatchedCells = data.graph.nodes.filter(
-  (n) => n.cell !== cellId(project(n.position)),
+  (n) => n.cell !== cellId(project(n.position), data.cellMetres ?? 250),
 );
 const packed = unpackDataset(packDataset(data));
 const highfield: Position = [-1.3965, 50.9358];
@@ -391,10 +391,14 @@ const output = {
   },
   highfield: {
     position: highfield,
-    cell: cellId(project(highfield)),
+    cell: cellId(project(highfield), data.cellMetres ?? 250),
     snap: centreSnap,
-    reachable20: walk.times.has(cellId(project(highfield))),
-    reachable45: walk45.times.has(cellId(project(highfield))),
+    reachable20: walk.times.has(
+      cellId(project(highfield), data.cellMetres ?? 250),
+    ),
+    reachable45: walk45.times.has(
+      cellId(project(highfield), data.cellMetres ?? 250),
+    ),
   },
   districts: districtCoverage,
   scenarios: scenarioResults,

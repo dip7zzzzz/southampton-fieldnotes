@@ -92,6 +92,7 @@ export interface Demographics {
   }[];
 }
 export interface Dataset {
+  cellMetres?: number;
   version: string;
   modelVersion: string;
   preparedAt: string;
@@ -105,6 +106,7 @@ export interface Dataset {
   calendars: CalendarPeriod[];
   demographics: Demographics;
   reference: {
+    cellMetres?: number;
     version: string;
     values: number[];
     frozenAt: string;

@@ -847,7 +847,8 @@ export default function App() {
                 {time.mode === "typical"
                   ? "Typical week"
                   : formatDate(context.date)}{" "}
-                · {String(hour).padStart(2, "0")}:00 · 250 m cells
+                · {String(hour).padStart(2, "0")}:00 · {data.cellMetres ?? 250}{" "}
+                m cells
               </span>
             </div>
             <span className="experimental-tag">EXPERIMENTAL</span>

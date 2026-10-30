@@ -1,5 +1,16 @@
 # GitHub Pages deployment
 
+Live site: https://dip7zzzzz.github.io/southampton-fieldnotes/
+Repository: https://github.com/dip7zzzzz/southampton-fieldnotes
+The URL can be shared with an iPhone user; no GitHub account is needed to visit.
+
+Grid update: experimental-0.2.0 uses 125m cells and a new grid-specific frozen
+reference. The original 250m dataset/reference are retained privately for
+comparison. The scoring formula, venue weights and 250m network catchment
+remain unchanged. Scientific spatial precision is not established by smaller
+polygons. Rebaseline is explicit when changing grid resolution; routine
+refreshes must retain the matching reference.
+
 The application is published from main using .github/workflows/pages.yml.
 GitHub Pages must use GitHub Actions as its publishing source. The workflow
 uses standard public-repository runners, builds dist and deploys it to Pages.

@@ -3,6 +3,16 @@
 Experimental mobile-friendly Southampton activity map. React, TypeScript, Vite,
 MapLibre and OpenFreeMap. Publicly published for GitHub Pages testing.
 
+Open or share: https://dip7zzzzz.github.io/southampton-fieldnotes/
+No GitHub account is needed to visit on iPhone Safari or Android.
+
+The map uses 125-metre boxes (four per former 250-metre box). This increases
+display detail, not the resolution of observed evidence. Model 0.2.0 has a
+separately versioned reference for this grid; previous percentiles are not
+directly comparable. Venue weights and the 250-metre walking catchment remain
+unchanged. Older saved area IDs refer to the previous grid; save the smaller
+areas again where needed.
+
 ## Scientific limitations
 
 Scores are rounded reference percentiles, not people/hour, probabilities or
@@ -48,7 +58,7 @@ External walking directions receive a destination when the user opens the link.
 - Private raw caches, audit artifacts and planning documents are excluded.
 
 Preparation/audit utilities require separately held local caches/artifacts and
-are not run by deployment. Scientific coefficients and the frozen reference
+are not run by deployment. Scientific coefficients and the grid-specific reference
 were not changed for hosting. No API credentials are required.
 
 See [data attribution](public/DATA-LICENCES.md). OSM-derived data © OpenStreetMap

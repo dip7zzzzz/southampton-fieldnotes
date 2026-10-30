@@ -20,6 +20,7 @@ for (const width of [1440, 390]) {
       r.url().endsWith("/data/southampton.json"),
     );
     await page.goto("./");
+    await expect(page.locator(".map-title-card")).toContainText("125 m cells");
     expect((await dataset).status()).toBe(200);
     expect((await dataset).headers()["content-type"]).toContain(
       "application/json",

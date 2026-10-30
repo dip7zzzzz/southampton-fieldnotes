@@ -118,7 +118,7 @@ export function unpackDataset(value: any): Dataset {
             id: String(n[0]),
             position: [n[1], n[2]],
             xy,
-            cell: n[5] ?? cellId(xy),
+            cell: n[5] ?? cellId(xy, value.cellMetres ?? 250),
           };
         },
       ),

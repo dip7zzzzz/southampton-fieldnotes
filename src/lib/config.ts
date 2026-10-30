@@ -1,5 +1,5 @@
 import type { Category } from "./types";
-export const MODEL_VERSION = "experimental-0.1.1";
+export const MODEL_VERSION = "experimental-0.2.0";
 export const CATEGORIES: Category[] = [
   "shopping",
   "cafe",
@@ -75,7 +75,7 @@ export const PROFILES: Record<
   },
 };
 export const ASSUMPTIONS = {
-  cellMetres: 250,
+  cellMetres: 125,
   catchmentMetres: 250,
   decayMetres: 120,
   snapMetres: 60,
