@@ -1,0 +1,43 @@
+{
+  "name": "southampton-hotspot-experiment",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/local-server.mjs",
+    "open": "node scripts/open-app.mjs",
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "tsx --test tests/*.test.ts",
+    "test:browser": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "audit:data": "tsx scripts/audit.ts",
+    "data:refresh": "tsx scripts/refresh-data.ts",
+    "data:prepare": "tsx scripts/prepare-data.ts",
+    "pilot": "tsx scripts/pilot.ts"
+  },
+  "dependencies": {
+    "lucide-react": "^1.65.0",
+    "luxon": "^3.7.2",
+    "maplibre-gl": "^6.16.0",
+    "opening_hours": "^3.15.0",
+    "proj4": "^2.22.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
+    "@types/geojson": "^7946.0.16",
+    "@types/luxon": "^3.7.6",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  }
+}

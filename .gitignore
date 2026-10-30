@@ -1,0 +1,25 @@
+node_modules/
+dist/
+.cache/
+playwright-report/
+test-results/
+.env*
+!.env.example
+*.local
+*.tmp
+dist-pages/
+# Private raw snapshots, local investigation artifacts and historical planning.
+/data/
+docs/*
+!docs/DEPLOYMENT.md
+.github/workflows/refresh-data.yml
+DECISIONS.md
+MODEL_ASSUMPTIONS.md
+PROJECT_STATE.md
+.agents/
+.codex/
+.aws/
+*.pem
+*.key
+*.pfx
+*.p12

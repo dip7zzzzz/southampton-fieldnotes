@@ -1,0 +1,28 @@
+# GitHub Pages deployment
+
+The application is published from main using .github/workflows/pages.yml.
+GitHub Pages must use GitHub Actions as its publishing source. The workflow
+uses standard public-repository runners, builds dist and deploys it to Pages.
+No paid services, credentials in source, scheduled refresh or runtime backend
+are configured.
+
+FIELDNOTES_PAGES=true selects /southampton-fieldnotes/ in vite.config.ts.
+Local builds retain / so the existing local launcher remains usable.
+JSON requests use import.meta.env.BASE_URL; Vite rewrites assets and the
+bundled map worker for the deployment subdirectory. There is no client router
+requiring a Pages fallback. All application paths are relative to that base.
+
+Private data/raw snapshots, data diagnostics, historical planning documents,
+audit logs/screenshots and local tools remain outside Git. The explicitly
+public public/data/southampton.json contains aggregate and OSM data, not GPS
+history, user preferences, accounts or observations of individuals. See
+public/DATA-LICENCES.md for data attribution. Publication grants no new
+open-source licence to the original application code.
+
+The experimental-model disclosures remain visible. No scientific coefficients
+or ranking/reference methodology are changed for deployment. No automatic
+data-refresh workflow is published.
+
+GitHub Pages does not apply the Cloudflare-style public/_headers file.
+The HTML noindex metadata remains a request to search engines, not access
+control. This website and the source repository are publicly accessible.
