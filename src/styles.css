@@ -1716,3 +1716,17 @@ select option {
   width: 100%;
   margin: 10px 0;
 }
+.residential-context {
+  border: 1px solid var(--line);
+  padding: 12px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.residential-context p {
+  color: var(--muted);
+}
+.residential-context a {
+  text-decoration: underline;
+}

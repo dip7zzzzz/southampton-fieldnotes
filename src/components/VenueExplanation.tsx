@@ -1,16 +1,23 @@
 import {
   ArrowUpRight,
   Coffee,
+  GraduationCap,
+  Utensils,
+  Wine,
   Dumbbell,
   ShoppingBag,
   TrainFront,
   Trees,
 } from "lucide-react";
-import { venueActivity } from "../lib/model";
-import type { TimeContext, Venue } from "../lib/types";
+import { activeComponent, venueActivity } from "../lib/model";
+import { activityProfile } from "../lib/activity-components";
+import type { Scenario, TimeContext, Venue } from "../lib/types";
 const icons = {
   shopping: ShoppingBag,
   cafe: Coffee,
+  restaurant: Utensils,
+  nightlife: Wine,
+  education: GraduationCap,
   leisure: Trees,
   fitness: Dumbbell,
   transport: TrainFront,
@@ -21,15 +28,31 @@ export default function VenueExplanation({
   cell,
   context,
   tenants,
+  scenario = "central",
 }: {
   venue: Venue;
   contribution: number;
   cell: string;
   context: TimeContext;
   tenants: Venue[];
+  scenario?: Scenario;
 }) {
-  const value = venueActivity(venue, context),
-    Icon = icons[venue.category],
+  const envelope = venueActivity(venue, context),
+    component = activeComponent(envelope, scenario === "sensitivity" ? 1 : 0),
+    value = {
+      ...component,
+      activeVenue:
+        component.venue.id !== venue.id ? component.venue : undefined,
+      assumptions: [
+        ...component.assumptions,
+        ...(envelope.alternatives
+          ? [
+              "Physical envelope uses the maximum active component, not a sum of nested venue capacities",
+            ]
+          : []),
+      ],
+    },
+    Icon = icons[value.activeVenue?.category ?? venue.category],
     assumed = value.assumptions.some((s) =>
       s.includes("Opening hours assumed"),
     );
@@ -52,14 +75,20 @@ export default function VenueExplanation({
         </span>
       </summary>
       <p>{value.assumptions.join(". ")}.</p>
+      {value.activeVenue && (
+        <p>
+          Active component: {value.activeVenue.name}. Its profile supplies the
+          single envelope contribution at this hour.
+        </p>
+      )}
       <dl>
         <div>
           <dt>Size proxy</dt>
           <dd>
-            {venue.size.toFixed(2)} ·{" "}
-            {venue.areaSource === "exclusive footprint"
+            {(value.activeVenue ?? venue).size.toFixed(2)} ·{" "}
+            {(value.activeVenue ?? venue).areaSource === "exclusive footprint"
               ? "venue-tagged footprint; mixed use possible"
-              : venue.areaSource}
+              : (value.activeVenue ?? venue).areaSource}
           </dd>
         </div>
         <div>
@@ -68,7 +97,7 @@ export default function VenueExplanation({
         </div>
         <div>
           <dt>Outdoor coefficient</dt>
-          <dd>{venue.beta.toFixed(2)} · assumed</dd>
+          <dd>{(value.activeVenue ?? venue).beta.toFixed(2)} · assumed</dd>
         </div>
         <div>
           <dt>Cell allocation</dt>
@@ -81,17 +110,30 @@ export default function VenueExplanation({
         </div>
         <div>
           <dt>Schedule</dt>
-          <dd>{venue.hours ?? "Category template"}</dd>
+          <dd>
+            {(value.activeVenue ?? venue).hours ??
+              `${activityProfile(value.activeVenue ?? venue).hours} · assumed template`}
+          </dd>
+        </div>
+        <div>
+          <dt>Network link</dt>
+          <dd>
+            {venue.linkMethod ?? "geometry proximity"} ·{" "}
+            {venue.snapMetres?.toFixed(1) ?? "unknown"} m; public access
+            unverified
+          </dd>
         </div>
       </dl>
       {tenants.length > 0 && (
         <div className="tenant-explanation">
           <strong>
-            {tenants.length} mapped tenants — explained, not added again
+            {tenants.length} nested mapped venues — explained, not added again
           </strong>
           <p>
-            These venue estimates overlap the mall anchor and are excluded from
-            the cell sum.
+            These venue estimates overlap the physical building or mall anchor
+            and are excluded from the cell sum. The strongest active nested
+            profile may supply the single envelope score after the parent
+            closes.
           </p>
           <ul>
             {tenants.map((tenant) => (
@@ -118,6 +160,14 @@ export default function VenueExplanation({
       >
         OSM source <ArrowUpRight size={12} />
       </a>
+      {venue.entranceSourceUrl && (
+        <p>
+          <a href={venue.entranceSourceUrl} target="_blank" rel="noreferrer">
+            University mapped entrance source
+          </a>{" "}
+          · current access is not established.
+        </p>
+      )}
     </details>
   );
 }

@@ -1,5 +1,5 @@
 import { ASSUMPTIONS } from "./config";
-import { distance, project } from "./geo";
+import { cellId, distance, project } from "./geo";
 import type { Graph, Position } from "./types";
 export function adjacency(graph: Graph) {
   const list: { node: number; metres: number }[][] = graph.nodes.map(() => []);
@@ -106,18 +106,92 @@ export function nearestNode(
   return best < 0 ? null : { node: best, metres: bestDistance };
 }
 const spatialIndexes = new WeakMap<Graph, Map<string, number[]>>();
-export function catchment(graph: Graph, node: number, list = adjacency(graph)) {
-  // Each undirected edge contributes its length once, weighted by network distance.
-  // Splitting a mapped edge cannot create extra activity merely by adding vertices.
-  const reachable = distances(graph, node, ASSUMPTIONS.catchmentMetres, list),
+export function catchment(
+  graph: Graph,
+  node: number,
+  list = adjacency(graph),
+  connectorMetres = 0,
+) {
+  // Integrate only the reachable portion of each edge, including a frontier whose
+  // far endpoint lies beyond 250 m. Directed edges may only be entered from a.
+  // Exponential integration (rather than endpoint averaging) is invariant to
+  // splitting a straight edge. Position along simplified near-straight edges is
+  // interpolated; stored routing length, not straight-line distance, controls cost.
+  if (
+    !Number.isFinite(connectorMetres) ||
+    connectorMetres < 0 ||
+    connectorMetres > ASSUMPTIONS.catchmentMetres
+  )
+    throw new Error("Invalid catchment connector distance");
+  const limit = ASSUMPTIONS.catchmentMetres - connectorMetres;
+  const reachable = distances(graph, node, limit, list),
     weights = new Map<string, number>();
   for (const edge of graph.edges) {
     const da = reachable.get(edge.a),
       db = reachable.get(edge.b);
-    if (da === undefined || db === undefined) continue;
-    const w = edge.metres * Math.exp(-(da + db) / 2 / ASSUMPTIONS.decayMetres);
-    for (const id of [graph.nodes[edge.a].cell, graph.nodes[edge.b].cell])
-      weights.set(id, (weights.get(id) ?? 0) + w / 2);
+    if (da === undefined && (db === undefined || edge.forwardOnly)) continue;
+    const length = edge.metres,
+      decay = ASSUMPTIONS.decayMetres;
+    const aEnd =
+      da === undefined ? 0 : Math.max(0, Math.min(length, limit - da));
+    const bStart =
+      db === undefined || edge.forwardOnly
+        ? length
+        : Math.max(0, Math.min(length, length - (limit - db)));
+    const crossing =
+      da !== undefined && db !== undefined && !edge.forwardOnly
+        ? (db + length - da) / 2
+        : length;
+    const a = graph.nodes[edge.a],
+      b = graph.nodes[edge.b];
+    const gridCells = [a.cell, b.cell].every((id) => /^-?\d+:-?\d+$/.test(id));
+    const boundaries: number[] = [];
+    if (gridCells)
+      for (const axis of [0, 1]) {
+        const low = Math.min(a.xy[axis], b.xy[axis]),
+          high = Math.max(a.xy[axis], b.xy[axis]);
+        for (
+          let plane =
+            (Math.floor(low / ASSUMPTIONS.cellMetres) + 1) *
+            ASSUMPTIONS.cellMetres;
+          plane < high;
+          plane += ASSUMPTIONS.cellMetres
+        )
+          boundaries.push(
+            ((plane - a.xy[axis]) / (b.xy[axis] - a.xy[axis])) * length,
+          );
+      }
+    const cuts = [
+      ...new Set([
+        0,
+        ...(gridCells ? boundaries : [length / 2]),
+        length,
+        aEnd,
+        bStart,
+        Math.max(0, Math.min(length, crossing)),
+      ]),
+    ].sort((a, b) => a - b);
+    for (let i = 1; i < cuts.length; i++) {
+      const start = cuts[i - 1],
+        end = cuts[i],
+        midpoint = (start + end) / 2;
+      const fromA = da === undefined ? Infinity : da + midpoint;
+      const fromB =
+        db === undefined || edge.forwardOnly
+          ? Infinity
+          : db + length - midpoint;
+      if (Math.min(fromA, fromB) > limit || end <= start) continue;
+      const d0 = fromA <= fromB ? da! + start : db! + length - start;
+      const d1 = fromA <= fromB ? da! + end : db! + length - end;
+      const w = decay * Math.abs(Math.exp(-d0 / decay) - Math.exp(-d1 / decay));
+      const id = gridCells
+        ? cellId([
+            a.xy[0] + ((b.xy[0] - a.xy[0]) * midpoint) / length,
+            a.xy[1] + ((b.xy[1] - a.xy[1]) * midpoint) / length,
+          ])
+        : graph.nodes[midpoint < length / 2 ? edge.a : edge.b].cell;
+      weights.set(id, (weights.get(id) ?? 0) + w);
+    }
   }
   if (!weights.size) weights.set(graph.nodes[node].cell, 1);
   const total = [...weights.values()].reduce((a, b) => a + b, 0);

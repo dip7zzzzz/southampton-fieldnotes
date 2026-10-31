@@ -16,6 +16,12 @@ docs/*
 DECISIONS.md
 MODEL_ASSUMPTIONS.md
 PROJECT_STATE.md
+# Local project memory: keep private planning out of the public repository.
+/PROJECT.md
+/PLAN.md
+/HANDOFF.md
+/AGENTS.md
+/scripts/codex-handover/
 .agents/
 .codex/
 .aws/

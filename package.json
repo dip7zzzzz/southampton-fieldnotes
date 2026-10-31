@@ -15,6 +15,9 @@
     "audit:data": "tsx scripts/audit.ts",
     "data:refresh": "tsx scripts/refresh-data.ts",
     "data:prepare": "tsx scripts/prepare-data.ts",
+    "data:residential": "tsx scripts/refresh-residential.ts",
+    "data:university": "tsx scripts/refresh-university.ts",
+    "compare:models": "tsx scripts/compare-models.ts",
     "pilot": "tsx scripts/pilot.ts"
   },
   "dependencies": {

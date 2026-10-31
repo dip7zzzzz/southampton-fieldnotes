@@ -82,6 +82,41 @@ export function validateDataset(data: Dataset) {
       data.demographics.share > 1)
   )
     fail();
+  if (data.residentialContext) {
+    const r = data.residentialContext;
+    if (
+      r.geographyVersion !== "MSOA2021" ||
+      !Number.isInteger(r.year) ||
+      !Array.isArray(r.areas) ||
+      !r.areas.length ||
+      !r.cellAreas ||
+      typeof r.cellAreas !== "object" ||
+      !r.sourceUrl ||
+      !r.boundaryUrl ||
+      !Number.isFinite(Date.parse(r.retrievedAt))
+    )
+      fail();
+    const codes = new Set(r.areas.map((a) => a.code));
+    if (
+      codes.size !== r.areas.length ||
+      r.areas.some(
+        (a) =>
+          !/^E020\d{5}$/.test(a.code) ||
+          !a.name ||
+          !finite(a.numerator) ||
+          !finite(a.denominator) ||
+          a.denominator <= 0 ||
+          a.numerator < 0 ||
+          a.numerator > a.denominator ||
+          !finite(a.share) ||
+          Math.abs(a.share - a.numerator / a.denominator) > 1e-10,
+      ) ||
+      Object.entries(r.cellAreas).some(
+        ([cell, code]) => !cells.has(cell) || !codes.has(code),
+      )
+    )
+      fail();
+  }
   return data;
 }
 // Compact public graph transport. Full provenance stays in the raw snapshots.

@@ -8,6 +8,9 @@ import {
   ChevronDown,
   Clock3,
   Coffee,
+  GraduationCap,
+  Utensils,
+  Wine,
   Compass,
   Dumbbell,
   Footprints,
@@ -55,6 +58,9 @@ import { sourceIsStale } from "./lib/source-status";
 const ICONS = {
   shopping: ShoppingBag,
   cafe: Coffee,
+  restaurant: Utensils,
+  nightlife: Wine,
+  education: GraduationCap,
   leisure: Trees,
   fitness: Dumbbell,
   transport: TrainFront,
@@ -952,6 +958,50 @@ export default function App() {
                 </span>
               </div>
               <div className="detail-scroll">
+                {data.residentialContext &&
+                  (() => {
+                    const code =
+                      data.residentialContext.cellAreas[selectedCell.cell.id];
+                    const area = data.residentialContext.areas.find(
+                      (a) => a.code === code,
+                    );
+                    return (
+                      <section
+                        className="residential-context"
+                        aria-label="Residential demographic context"
+                      >
+                        <h3>
+                          Residential context · {data.residentialContext.year}
+                        </h3>
+                        {area ? (
+                          <p>
+                            {area.name} ({area.code}):{" "}
+                            <strong>{(area.share * 100).toFixed(1)}%</strong> of
+                            usual residents are recorded female, ages 18–38.
+                            MSOA estimate assigned by cell centre; this is not a
+                            measured cell population or the composition of
+                            pedestrians.
+                          </p>
+                        ) : (
+                          <p>
+                            No unambiguous MSOA context for this cell centre.
+                          </p>
+                        )}
+                        <p>
+                          This context does not change activity scores or
+                          visitor demographic shares.{" "}
+                          <a
+                            href="https://www.nomisweb.co.uk/datasets/pestoa2021"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            ONS/Nomis PESTOA2021
+                          </a>{" "}
+                          · supporting single-age estimates.
+                        </p>
+                      </section>
+                    );
+                  })()}
                 <h3>What contributes here</h3>
                 {!selectedCell.cell.venueIds.length && (
                   <p>
@@ -962,7 +1012,7 @@ export default function App() {
                 {!!selectedCell.cell.contextIds?.length && (
                   <details className="context-places">
                     <summary>
-                      Mapped places without additional footfall weights (
+                      Mapped context inventory (
                       {selectedCell.cell.contextIds.length})
                     </summary>
                     <p>
@@ -983,7 +1033,10 @@ export default function App() {
                             >
                               {p.name}
                             </a>{" "}
-                            · {p.kind} · activity unknown
+                            · {p.kind} ·{" "}
+                            {venueLookup.has(p.id)
+                              ? "included in model inventory; see contributions/exclusions"
+                              : "additional activity unknown"}
                             {p.hours
                               ? ` · recorded hours: ${p.hours}`
                               : " · hours unknown"}
@@ -1001,6 +1054,7 @@ export default function App() {
                     cell={selectedCell.cell.id}
                     context={context}
                     tenants={data.venues.filter((v) => v.parent === c.id)}
+                    scenario={prefs.scenario}
                   />
                 ))}
                 <h3>Activity through the day</h3>
@@ -1233,19 +1287,21 @@ export default function App() {
               <p>
                 The stress test changes uncertain shopping, leisure and
                 transport contributions by +35%, and café and fitness
-                contributions by −35%. The opposite scenario defines the other
-                end of each citywide rank range. These are deliberate stress
-                tests, not measured bounds. Demographic differences remain
-                disabled without supporting evidence.
+                contributions by −35%; other new categories also vary by −35%.
+                The opposite scenario defines the other end of each citywide
+                rank range. These are deliberate stress tests, not measured
+                bounds. Demographic differences remain disabled without
+                supporting evidence.
               </p>
               <h3>What is assumed</h3>
               <p>
-                Education, nightlife, accommodation, bus stops, pedestrian
-                streets and multi-unit buildings are mapped as context where
-                available. Their additional activity is unknown and is not added
-                to the score. Grey cells may have no activity model. General
-                activity is therefore incomplete, even where map coverage
-                exists.
+                Education buildings, restaurants and nightlife now have distinct
+                provisional components. Campus containers and nested building
+                venues are not counted again. Accommodation, ordinary bus stops,
+                workplaces, hospitals, pedestrian streets and events lack
+                supported trip volumes and remain incomplete or contextual. Grey
+                cells may have no activity model. General activity is therefore
+                incomplete, even where map coverage exists.
               </p>
               <p>
                 All hourly curves and outdoor spillover coefficients currently

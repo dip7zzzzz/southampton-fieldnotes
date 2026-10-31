@@ -1,5 +1,21 @@
 export type Category =
-  "shopping" | "cafe" | "leisure" | "fitness" | "transport";
+  | "shopping"
+  | "cafe"
+  | "restaurant"
+  | "nightlife"
+  | "education"
+  | "leisure"
+  | "fitness"
+  | "transport";
+export type ActivityKind =
+  | "restaurant"
+  | "fast_food"
+  | "pub"
+  | "bar"
+  | "nightclub"
+  | "education"
+  | "library"
+  | "student_union";
 export type Position = [number, number];
 export type View = "women" | "general" | "uniform";
 export type Scenario = "central" | "uniform" | "sensitivity";
@@ -7,6 +23,24 @@ export interface Venue {
   id: string;
   name: string;
   category: Category;
+  activityKind?: ActivityKind;
+  sourceUrl?: string;
+  linkMethod?: "mapped university portal" | "geometry proximity";
+  entranceSourceUrl?: string;
+  entranceCount?: number;
+  nestedActivities?: Pick<
+    Venue,
+    | "id"
+    | "name"
+    | "category"
+    | "activityKind"
+    | "hours"
+    | "size"
+    | "sizeLow"
+    | "sizeHigh"
+    | "beta"
+    | "areaSource"
+  >[];
   position: Position;
   hours?: string;
   areaM2?: number;
@@ -92,6 +126,22 @@ export interface Demographics {
   }[];
 }
 export interface Dataset {
+  residentialContext?: {
+    year: number;
+    geographyVersion: "MSOA2021";
+    sourceUrl: string;
+    boundaryUrl: string;
+    retrievedAt: string;
+    areas: {
+      code: string;
+      name: string;
+      numerator: number;
+      denominator: number;
+      share: number;
+    }[];
+    cellAreas: Record<string, string>;
+    note: string;
+  };
   cellMetres?: number;
   version: string;
   modelVersion: string;
@@ -141,6 +191,8 @@ export interface TimeContext {
 }
 export interface VenueActivity {
   venue: Venue;
+  activeVenue?: Venue;
+  alternatives?: VenueActivity[];
   score: number;
   low: number;
   high: number;
@@ -161,7 +213,7 @@ export interface CellForecast {
   rankHigh: number;
   share: number | null;
   demographicFallback: boolean;
-  contributions: { id: string; value: number }[];
+  contributions: { id: string; value: number; category?: Category }[];
   evidence: "limited" | "mixed";
   minutes?: number;
   matching: number;

@@ -2,6 +2,8 @@
 
 Experimental mobile-friendly Southampton activity map. React, TypeScript, Vite,
 MapLibre and OpenFreeMap. Publicly published for GitHub Pages testing.
+Scientific model experimental-0.2.1 includes expanded destination functions,
+network allocation and separate aggregate residential context.
 
 Open or share: https://dip7zzzzz.github.io/southampton-fieldnotes/
 No GitHub account is needed to visit on iPhone Safari or Android.
@@ -10,7 +12,8 @@ The map uses 125-metre boxes (four per former 250-metre box). This increases
 display detail, not the resolution of observed evidence. Model 0.2.0 has a
 separately versioned reference for this grid; previous percentiles are not
 directly comparable. Venue weights and the 250-metre walking catchment remain
-unchanged. Older saved area IDs refer to the previous grid; save the smaller
+unchanged by that grid update. Scientific 0.2.1 retains its reference and extends
+the activity model as described below. Older saved area IDs refer to the previous grid; save the smaller
 areas again where needed.
 
 ## Scientific limitations
@@ -19,9 +22,13 @@ Scores are rounded reference percentiles, not people/hour, probabilities or
 accuracy ratings. Raw model units and city ranks are also shown. Size proxies,
 hourly curves and outdoor factors are assumptions. No independent pedestrian
 counts validate the rankings. The women-aged-18–38 view uses a uniform resident
-prior with no visitor-demographic differentiation. Teaching, nightlife and
-accommodation are context with unknown additional activity. Term dates supply
-calendar context only. Unsupported cells are coverage gaps, not empty streets.
+prior with no visitor-demographic differentiation. Teaching buildings, food
+subtypes and nightlife now have explicit uncalibrated activity profiles. Physical
+envelopes retain the strongest active function instead of adding every tenant.
+Accommodation, generic workplaces, ordinary stops and events lack supported trip
+volumes. Geographic 2024 MSOA residential context is separate and never changes
+visitor shares. Term dates supply calendar context only. Unsupported cells are
+coverage gaps, not empty streets.
 Model explanations and source provenance remain visible in the application.
 
 ## Local use
@@ -30,6 +37,13 @@ Requires Node 24. Run `npm ci`, then `npm run dev`.
 The prepared public dataset is included; normal use does not fetch Overpass or
 Nomis. External tiles/fonts require internet; cached OSM paths provide fallback.
 Windows users can use Open Fieldnotes.cmd for persistent local preview.
+
+Local research utilities: `npm run data:residential`, `npm run data:university`,
+`npm run data:prepare`, `npm run compare:models`. They require separately held
+source/baseline evidence; normal app builds do not. Preparation retains the frozen
+reference. Source validation, uncertainty and comparison reports remain local
+under the existing ignored-artifact policy. No observed accuracy improvement or
+count calibration has been established.
 
 Checks: `npm test`, `npm run typecheck`, `npm run build`, `npm run test:browser`.
 Browser checks use installed Microsoft Edge. Set FIELDNOTES_TEST_URL to target

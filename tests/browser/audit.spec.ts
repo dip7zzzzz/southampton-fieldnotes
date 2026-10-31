@@ -292,26 +292,21 @@ test("unmodelled coverage is explicit; arbitrary searches do not hide the map", 
     String(data.cells.length),
     { timeout: 45000 },
   );
-  await page.getByLabel("Search areas or businesses").fill("Avenue Campus");
-  const gap = page
-    .locator(".area-card")
-    .filter({ hasText: "Activity not modelled" })
-    .first();
-  if (await gap.count()) {
-    await gap.click();
-    await expect(
-      page.getByRole("article", { name: "Selected area details" }),
-    ).toContainText("coverage gap");
-  } else {
-    const id = data.cells.find((c) => !c.venueIds.length)!.id;
-    await page.getByLabel("Clear search").click();
-    while (!(await page.locator(`[data-cell-id="${id}"]`).count()))
-      await page.getByRole("button", { name: "Show more areas" }).click();
-    await page.locator(`[data-cell-id="${id}"]`).click();
-    await expect(
-      page.getByRole("article", { name: "Selected area details" }),
-    ).toContainText("coverage gap");
-  }
+  // Avenue now has education coverage. Select an actual uniquely named gap,
+  // rather than assuming a campus is unmodelled or paging through 3,157 cells.
+  const gap = data.cells.find(
+    (c) =>
+      !c.venueIds.length &&
+      data.cells.filter((other) => other.label === c.label).length === 1,
+  );
+  expect(gap).toBeTruthy();
+  await page.getByLabel("Search areas or businesses").fill(gap!.label);
+  const card = page.locator(`.area-card[data-cell-id="${gap!.id}"]`);
+  await expect(card).toContainText("Activity not modelled");
+  await card.click();
+  await expect(
+    page.getByRole("article", { name: "Selected area details" }),
+  ).toContainText("coverage gap");
 });
 
 test("malformed dataset and empty date input have recoverable errors", async ({

@@ -1,8 +1,11 @@
 import type { Category } from "./types";
-export const MODEL_VERSION = "experimental-0.2.0";
+export const MODEL_VERSION = "experimental-0.2.1";
 export const CATEGORIES: Category[] = [
   "shopping",
   "cafe",
+  "restaurant",
+  "nightlife",
+  "education",
   "leisure",
   "fitness",
   "transport",
@@ -10,6 +13,9 @@ export const CATEGORIES: Category[] = [
 export const CATEGORY_LABELS: Record<Category, string> = {
   shopping: "Shopping",
   cafe: "Cafés & food",
+  restaurant: "Restaurants & takeaway",
+  nightlife: "Pubs, bars & nightlife",
+  education: "Education & student unions",
   leisure: "Leisure & parks",
   fitness: "Fitness",
   transport: "Transport",
@@ -45,6 +51,35 @@ export const PROFILES: Record<
     hours: "Mo-Sa 08:00-20:00; Su 09:00-18:00",
     area: 90,
     beta: 0.55,
+  },
+  // New magnitudes inherit existing food/leisure analogues. These are explicitly
+  // uncalibrated proxies; new functions do not imply measured visits or attendance.
+  restaurant: {
+    weekday: [13, 19],
+    weekend: [13, 20],
+    width: 2,
+    weekendScale: 1,
+    hours: "Mo-Su 12:00-23:00",
+    area: 90,
+    beta: 0.55,
+  },
+  nightlife: {
+    weekday: [20, 23],
+    weekend: [20, 23],
+    width: 2,
+    weekendScale: 1,
+    hours: "Mo-Th 12:00-23:00; Fr-Sa 12:00-01:00; Su 12:00-23:00",
+    area: 90,
+    beta: 0.55,
+  },
+  education: {
+    weekday: [10, 14],
+    weekend: [11],
+    width: 2.5,
+    weekendScale: 1,
+    hours: "Mo-Fr 08:00-18:00; Sa 09:00-13:00; Su off",
+    area: 350,
+    beta: 0.7,
   },
   leisure: {
     weekday: [14, 18],

@@ -16,6 +16,19 @@ import { adjacency, catchment, nearestNode } from "../src/lib/graph";
 import { temporalActivity, venueActivity } from "../src/lib/model";
 import { simplifyGraph } from "../src/lib/simplify";
 import { packDataset } from "../src/lib/codec";
+import { classifyActivity } from "../src/lib/activity-components";
+import {
+  parseUniversityPlaces,
+  parseUniversityPortals,
+  buildingPortalsForOsm,
+} from "../src/lib/university";
+import {
+  parseResidentialPopulation,
+  validateMsoaBoundaries,
+  joinResidentialCells,
+  EXPECTED_SOUTHAMPTON_MSOAS,
+  RESIDENTIAL_YEAR,
+} from "../src/lib/residential";
 import {
   contextKind,
   isSouthamptonBoundary,
@@ -75,6 +88,16 @@ const census = await snapshot("census", false),
   holidaySource = await snapshot("bank-holidays", false),
   southamptonCalendar = await snapshot("southampton-calendar", false),
   solentCalendar = await snapshot("solent-calendar", false);
+const residentialPopulation = await snapshot("residential-population", false),
+  msoaBoundaries = await snapshot("msoa-boundaries", false);
+const universityPlaces = await snapshot("university-places", false),
+  universityPortals = await snapshot("university-portals", false);
+const officialBuildings = universityPlaces
+    ? parseUniversityPlaces(universityPlaces.payload.text)
+    : [],
+  officialPortals = universityPortals
+    ? parseUniversityPortals(universityPortals.payload.text)
+    : [];
 
 function boundaryRings(role: string) {
   const fragments: Position[][] = rawBoundary.payload.elements.flatMap(
@@ -199,40 +222,6 @@ graph.edges = simplified.edges;
 const list = adjacency(graph);
 // Public graph nodes are not joined by proximity: separate riverbanks and disconnected
 // paths stay separate. Venue snapping is bounded and disclosed as an assumption.
-const categories = (t: Record<string, string>): Category | undefined => {
-  if (t.railway === "station" || t.amenity === "bus_station")
-    return "transport";
-  if (["fitness_centre", "sports_centre"].includes(t.leisure)) return "fitness";
-  if (
-    t.leisure === "park" ||
-    ["cinema", "theatre", "library"].includes(t.amenity)
-  )
-    return "leisure";
-  if (["cafe", "restaurant", "fast_food"].includes(t.amenity)) return "cafe";
-  if (
-    [
-      "supermarket",
-      "convenience",
-      "clothes",
-      "books",
-      "mall",
-      "department_store",
-      "chemist",
-      "cosmetics",
-      "variety_store",
-      "bakery",
-      "shoes",
-      "jewelry",
-      "gift",
-      "florist",
-      "electronics",
-      "toys",
-      "sports",
-      "health_food",
-    ].includes(t.shop)
-  )
-    return "shopping";
-};
 const exclusions: Record<string, number> = {};
 const reject = (reason: string) => {
   exclusions[reason] = (exclusions[reason] ?? 0) + 1;
@@ -242,14 +231,26 @@ const candidates: {
   polygon?: Position[];
   probes: Position[];
   mall: boolean;
+  educationBuilding: boolean;
+  raw: RawElement;
 }[] = [];
-for (const raw of rawVenues.payload.elements as RawElement[]) {
+// Stable identity avoids counting context and selected-venue objects twice.
+const inventory = [
+  ...new Map(
+    [
+      ...(activityContext?.payload.elements ?? []),
+      ...rawVenues.payload.elements,
+    ].map((e: RawElement) => [e.type + "/" + e.id, e] as const),
+  ).values(),
+];
+for (const raw of inventory) {
   const t = raw.tags ?? {},
-    category = categories(t);
-  if (!category) {
+    component = classifyActivity(t);
+  if (!component) {
     reject("outside selected categories");
     continue;
   }
+  const { category, activityKind } = component;
   if (
     t.disused === "yes" ||
     t.abandoned === "yes" ||
@@ -284,6 +285,9 @@ for (const raw of rawVenues.payload.elements as RawElement[]) {
     id: `${raw.type}/${raw.id}`,
     name: t.name ?? t.brand ?? `Unnamed ${category} · ${raw.id}`,
     category,
+    activityKind,
+    sourceUrl: "https://www.openstreetmap.org/" + raw.type + "/" + raw.id,
+    linkMethod: "geometry proximity",
     position,
     hours: t.opening_hours,
     areaM2: usableArea,
@@ -301,6 +305,8 @@ for (const raw of rawVenues.payload.elements as RawElement[]) {
     polygon: geometry,
     probes: osmGeometry(raw),
     mall: t.shop === "mall",
+    educationBuilding: category === "education" && Boolean(t.building),
+    raw,
   });
 }
 const deduped: typeof candidates = [];
@@ -325,25 +331,42 @@ for (const candidate of candidates.sort(
   }
   deduped.push(candidate);
 }
-const malls = deduped.filter((c) => c.mall && c.polygon);
+const envelopes = deduped
+  .filter((c) => (c.mall || c.educationBuilding) && c.polygon?.length)
+  .sort((a, b) => polygonArea(a.polygon!) - polygonArea(b.polygon!));
 for (const item of deduped) {
-  const parent = malls.find(
+  const parent = envelopes.find(
     (m) =>
-      m.venue.id !== item.venue.id && inside(item.venue.position, m.polygon!),
+      m.venue.id !== item.venue.id &&
+      (!item.polygon || polygonArea(m.polygon!) > polygonArea(item.polygon)) &&
+      inside(item.venue.position, m.polygon!),
   );
   if (parent) {
     item.venue.parent = parent.venue.id;
-    item.venue.excluded = "Explained within the mall anchor; not added again";
+    item.venue.excluded =
+      "Explained within a physical building or mall anchor; not added again";
   }
   if (item.mall)
     item.venue.areaSource = item.venue.areaM2
       ? "exclusive footprint"
       : "category fallback";
+  const official =
+    item.venue.category === "education"
+      ? buildingPortalsForOsm(item.raw, officialBuildings, officialPortals)
+      : undefined;
+  const portalSnaps =
+    official?.portals
+      .map((p) => nearestNode(graph, p.position))
+      .filter((s): s is NonNullable<typeof s> => Boolean(s)) ?? [];
+  const uniquePortals = [
+    ...new Map(portalSnaps.map((p) => [p.node, p])).values(),
+  ];
   const probes = [item.venue.position, ...item.probes];
-  const snap = probes
+  const fallback = probes
     .map((p) => nearestNode(graph, p))
     .filter((x): x is NonNullable<typeof x> => Boolean(x))
     .sort((a, b) => a.metres - b.metres)[0];
+  const snap = uniquePortals[0] ?? fallback;
   if (!snap) {
     item.venue.excluded ??= "No outdoor pedestrian link within 60 metres";
     reject("no nearby public-network link");
@@ -351,10 +374,33 @@ for (const item of deduped) {
   }
   item.venue.node = snap.node;
   item.venue.snapMetres = snap.metres;
+  if (uniquePortals.length && official) {
+    item.venue.linkMethod = "mapped university portal";
+    item.venue.entranceCount = uniquePortals.length;
+    item.venue.entranceSourceUrl = universityPortals!.sourceUrl;
+  }
   if (!item.venue.excluded) {
-    const allocations = catchment(graph, snap.node, list).filter((x) =>
-      publicCells.has(x.cell),
-    );
+    const entranceWeights = new Map<string, number>();
+    // Equal entrance use is a disclosed structural hypothesis, not a gate count.
+    for (const entrance of uniquePortals.length ? uniquePortals : [snap]) {
+      const part = catchment(
+        graph,
+        entrance.node,
+        list,
+        entrance.metres,
+      ).filter((x) => publicCells.has(x.cell));
+      const subtotal = part.reduce((sum, x) => sum + x.weight, 0);
+      for (const x of part)
+        if (subtotal > 0)
+          entranceWeights.set(
+            x.cell,
+            (entranceWeights.get(x.cell) ?? 0) + x.weight / subtotal,
+          );
+    }
+    const allocations = [...entranceWeights].map(([cell, weight]) => ({
+      cell,
+      weight,
+    }));
     const total = allocations.reduce((s, x) => s + x.weight, 0);
     if (total > 0)
       item.venue.catchment = allocations.map((x) => ({
@@ -368,6 +414,44 @@ for (const item of deduped) {
 const venues = deduped
   .map((c) => c.venue)
   .sort((a, b) => a.id.localeCompare(b.id));
+// Nested functions may remain open after a container's schedule closes. Retain
+// their profiles inside the top envelope and select a maximum at each hour.
+// Never sum a campus/building/mall plus every mapped tenant as independent size.
+const byVenueId = new Map(venues.map((v) => [v.id, v]));
+for (const child of venues.filter((v) => v.parent)) {
+  let root = byVenueId.get(child.parent!);
+  const visited = new Set([child.id]);
+  while (root?.parent) {
+    if (visited.has(root.id)) throw new Error("Cyclic physical envelope");
+    visited.add(root.id);
+    root = byVenueId.get(root.parent);
+  }
+  if (!root) throw new Error("Missing physical envelope");
+  const {
+    id,
+    name,
+    category,
+    activityKind,
+    hours,
+    size,
+    sizeLow,
+    sizeHigh,
+    beta,
+    areaSource,
+  } = child;
+  (root.nestedActivities ??= []).push({
+    id,
+    name,
+    category,
+    activityKind,
+    hours,
+    size,
+    sizeLow,
+    sizeHigh,
+    beta,
+    areaSource,
+  });
+}
 // Include every connected public-network cell. No POIs is a coverage gap, not
 // evidence of an empty street. Context records never enter the activity sum.
 const contextPlaces: ContextPlace[] = (
@@ -557,6 +641,39 @@ for (const institution of [...new Set(calendars.map((p) => p.institution))]) {
   }
 }
 const sources: SourceRecord[] = [
+  ...(
+    [
+      ["university-places", "University building geometry", universityPlaces],
+      ["university-portals", "University mapped entrances", universityPortals],
+    ] as const
+  ).map(([id, title, source]) => ({
+    id,
+    title,
+    url: source?.sourceUrl ?? "https://data.southampton.ac.uk/places.html",
+    retrievedAt: source?.retrievedAt,
+    license: source?.license,
+    status: source ? ("available" as const) : ("unavailable" as const),
+    note: "Structural geometry matched to OSM, never extra capacity. Portals are non-authoritative; access, use and publisher update date unverified. Equal mapped-entrance use is assumed.",
+  })),
+  ...(
+    [
+      [
+        "residential-population",
+        "ONS MSOA residential context",
+        residentialPopulation,
+      ],
+      ["msoa-boundaries", "ONS MSOA2021 boundaries", msoaBoundaries],
+    ] as const
+  ).map(([id, title, source]) => ({
+    id,
+    title,
+    url: source?.sourceUrl ?? "https://www.nomisweb.co.uk/datasets/pestoa2021",
+    retrievedAt: source?.retrievedAt,
+    reference: source?.reference,
+    license: source?.license,
+    status: source ? ("context" as const) : ("unavailable" as const),
+    note: "Residential context only, never pedestrian composition. ONS OGL v3; contains OS data (c) Crown copyright and database right 2024.",
+  })),
   {
     id: "activity-context",
     title: "OSM activity coverage inventory",
@@ -564,7 +681,7 @@ const sources: SourceRecord[] = [
     retrievedAt: activityContext?.retrievedAt,
     license: activityContext?.license,
     status: activityContext ? "available" : "unavailable",
-    note: "Education, nightlife, accommodation, transport stops, pedestrian streets and multi-unit buildings. Searchable context only; no footfall weights or demographic inference.",
+    note: "OSM function inventory: nightlife and physical education buildings support provisional activity components; other structures remain contextual. No observed footfall or visitor demographic evidence.",
   },
   ...(
     [
@@ -671,7 +788,7 @@ const dataset: Dataset = {
     note: "Frozen distribution of modelled cell activity across a typical 168-hour Southampton week; no measured probability.",
   },
   coverage: {
-    rawVenues: rawVenues.payload.elements.length,
+    rawVenues: inventory.length,
     eligibleVenues: venues.length,
     linkedVenues: venues.filter((v) => v.catchment.length && !v.excluded)
       .length,
@@ -680,6 +797,29 @@ const dataset: Dataset = {
     exclusions,
   },
 };
+if (residentialPopulation && msoaBoundaries) {
+  if (
+    !residentialPopulation.license.includes("OGL") ||
+    !msoaBoundaries.license.includes("OGL")
+  )
+    throw new Error("Residential sources need documented open reuse terms");
+  validateMsoaBoundaries(msoaBoundaries.payload);
+  const areas = parseResidentialPopulation(
+    residentialPopulation.payload,
+    EXPECTED_SOUTHAMPTON_MSOAS,
+    RESIDENTIAL_YEAR,
+  );
+  dataset.residentialContext = {
+    year: RESIDENTIAL_YEAR,
+    geographyVersion: "MSOA2021",
+    sourceUrl: residentialPopulation.sourceUrl,
+    boundaryUrl: msoaBoundaries.sourceUrl,
+    retrievedAt: residentialPopulation.retrievedAt,
+    areas,
+    cellAreas: joinResidentialCells(cells, msoaBoundaries.payload, areas),
+    note: "2024 MSOA usual-resident female ages 18-38 / all residents. Single-age supporting estimates; not visitor composition or measured 125 m demographics. Cell centres assign area context; boundary cells may straddle areas.",
+  };
+}
 // Keep scaling unchanged across source refreshes. Rebaselining requires an explicit flag.
 try {
   if (!process.argv.includes("--rebaseline"))
@@ -743,6 +883,7 @@ dataset.version = createHash("sha256")
       cells,
       osmAt: dataset.osmAt,
       demographics: dataset.demographics,
+      residentialContext: dataset.residentialContext,
       calendars: dataset.calendars,
       holidays: dataset.holidays,
       sources: dataset.sources,

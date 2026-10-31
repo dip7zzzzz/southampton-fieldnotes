@@ -4,6 +4,13 @@ Live site: https://dip7zzzzz.github.io/southampton-fieldnotes/
 Repository: https://github.com/dip7zzzzz/southampton-fieldnotes
 The URL can be shared with an iPhone user; no GitHub account is needed to visit.
 
+Scientific release: experimental-0.2.1, dataset 5805a25269b5. This extends
+destination functions and network allocation and adds separate aggregate 2024
+MSOA residential context. It retains reference-55e49f63e2ca and 125 m display
+cells. Time profiles and magnitudes remain uncalibrated; software test success
+does not establish pedestrian-count accuracy. Residential context never changes
+visitor shares or activity rankings. Source attributions ship in DATA-LICENCES.md.
+
 Grid update: experimental-0.2.0 uses 125m cells and a new grid-specific frozen
 reference. The original 250m dataset/reference are retained privately for
 comparison. The scoring formula, venue weights and 250m network catchment
