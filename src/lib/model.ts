@@ -1,6 +1,7 @@
 import OpeningHours from "opening_hours";
 import { ASSUMPTIONS } from "./config";
 import { activityProfile, profileCurve } from "./activity-components";
+import { activityIntensity } from "./intensity";
 import type {
   Category,
   CellForecast,
@@ -272,6 +273,7 @@ export function forecast(
         women: 0,
         index: 0,
         generalIndex: 0,
+        intensity: 0,
         low: 0,
         high: 0,
         rank: 0,
@@ -333,6 +335,7 @@ export function forecast(
         : (demo.share ?? 1) / (data.demographics.share ?? 1);
     result.index = displayIndex(result.activity * scale, data.reference.values);
     result.generalIndex = displayIndex(result.activity, data.reference.values);
+    result.intensity = activityIntensity(result.activity * scale);
     result.low *= scale;
     result.high *= scale;
     const contributors = result.contributions.map((c) => byId.get(c.id)!);

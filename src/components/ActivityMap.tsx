@@ -5,6 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import type { FeatureCollection } from "geojson";
 import type { CellForecast, Dataset, Position } from "../lib/types";
+import { INTENSITY_COLOURS } from "../lib/intensity";
 maplibregl.setWorkerUrl(workerUrl);
 
 interface Props {
@@ -37,12 +38,11 @@ export default function ActivityMap({
       id: c.cell.id,
       properties: {
         id: c.cell.id,
-        index: c.index,
+        intensity: c.intensity,
         selected: c.cell.id === selected,
         active: c.activity > 0,
         modelled: c.cell.venueIds.length > 0,
         matching: c.matching,
-        highlight: true,
       },
       geometry: { type: "Polygon", coordinates: [c.cell.polygon] },
     })),
@@ -113,7 +113,13 @@ export default function ActivityMap({
       });
       const bounds = new maplibregl.LngLatBounds();
       data.cells.forEach((c) => bounds.extend(c.centre));
-      instance.fitBounds(bounds, { padding: 45, duration: 0 });
+      instance.fitBounds(bounds, {
+        padding:
+          window.innerWidth <= 720
+            ? { top: 85, bottom: 185, left: 25, right: 25 }
+            : 60,
+        duration: 0,
+      });
     } catch {
       setError("Interactive map unavailable. Use the ranked areas below.");
       return;
@@ -137,39 +143,39 @@ export default function ActivityMap({
         source: "activity",
         paint: {
           "fill-color": [
-            "interpolate",
-            ["linear"],
-            ["get", "index"],
-            0,
-            "#b6c4bd",
-            20,
-            "#e1eeb5",
-            45,
-            "#c7de83",
-            65,
-            "#8cb85f",
-            85,
-            "#4f8c4d",
-            100,
-            "#205c41",
-          ],
-          "fill-opacity": [
             "case",
-            ["!", ["get", "active"]],
-            0.16,
-            ["get", "highlight"],
-            0.59,
-            0.23,
+            ["get", "modelled"],
+            [
+              "interpolate",
+              ["linear"],
+              ["get", "intensity"],
+              ...INTENSITY_COLOURS.flatMap(([at, colour]) => [at, colour]),
+            ],
+            "#98a59c",
           ],
+          "fill-opacity": ["case", ["get", "modelled"], 0.7, 0.08],
         },
       });
       instance.addLayer({
         id: "activity-lines",
         type: "line",
         source: "activity",
+        filter: ["==", "modelled", true],
         paint: {
           "line-color": ["case", ["get", "selected"], "#173b2c", "#57734a"],
-          "line-width": ["case", ["get", "selected"], 3, 0.7],
+          "line-width": ["case", ["get", "selected"], 3, 0.45],
+          "line-opacity": ["case", ["get", "selected"], 1, 0.25],
+        },
+      });
+      instance.addLayer({
+        id: "activity-gaps",
+        type: "line",
+        source: "activity",
+        filter: ["==", "modelled", false],
+        paint: {
+          "line-color": ["case", ["get", "selected"], "#173b2c", "#71857b"],
+          "line-width": ["case", ["get", "selected"], 3, 0.8],
+          "line-dasharray": [3, 3],
           "line-opacity": 0.65,
         },
       });
@@ -183,6 +189,10 @@ export default function ActivityMap({
           latest.current.features.length,
         );
         host.current.dataset.mapReady = "true";
+        host.current.dataset.mapCentre = JSON.stringify(
+          instance.getCenter().toArray(),
+        );
+        host.current.dataset.mapZoom = String(instance.getZoom());
         host.current.dataset.mapLayers = String(
           instance.getStyle()?.layers?.length ?? 0,
         );
@@ -292,7 +302,13 @@ export default function ActivityMap({
       map.current?.flyTo({
         center: focus,
         zoom: 15,
-        duration: 700,
+        duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? 0
+          : 250,
+        padding:
+          window.innerWidth <= 720
+            ? { top: 80, bottom: 210, left: 15, right: 15 }
+            : { top: 80, bottom: 40, left: 25, right: 345 },
         essential: false,
       });
   }, [focus]);
@@ -304,7 +320,13 @@ export default function ActivityMap({
         onClick={() => {
           const bounds = new maplibregl.LngLatBounds();
           data.cells.forEach((c) => bounds.extend(c.centre));
-          map.current?.fitBounds(bounds, { padding: 45, duration: 0 });
+          map.current?.fitBounds(bounds, {
+            padding:
+              window.innerWidth <= 720
+                ? { top: 85, bottom: 185, left: 25, right: 25 }
+                : 60,
+            duration: 0,
+          });
         }}
       >
         Show Southampton coverage

@@ -206,6 +206,8 @@ export interface CellForecast {
   women: number;
   index: number;
   generalIndex: number;
+  /** Continuous display intensity; legacy index fields remain reproducible. */
+  intensity: number;
   low: number;
   high: number;
   rank: number;

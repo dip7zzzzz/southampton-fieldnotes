@@ -1,4 +1,12 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent,
+} from "react";
 import {
   ArrowDownUp,
   ArrowRight,
@@ -25,6 +33,8 @@ import {
   TrainFront,
   Trees,
   X,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { DateTime } from "luxon";
 import VenueExplanation from "./components/VenueExplanation";
@@ -36,12 +46,7 @@ import {
   PROFILES,
 } from "./lib/config";
 import { cellWalkingTimes, walkingReachability } from "./lib/graph";
-import {
-  displayIndex,
-  forecast,
-  venueActivity,
-  activityStressFactor,
-} from "./lib/model";
+import { forecast, venueActivity, activityStressFactor } from "./lib/model";
 import { initialTime, resolveTime, ZONE } from "./lib/time";
 import type {
   Category,
@@ -54,6 +59,12 @@ import type {
 } from "./lib/types";
 import { unpackDataset, validateDataset } from "./lib/codec";
 import { sourceIsStale } from "./lib/source-status";
+import {
+  activityIntensity,
+  formatIntensity,
+  INTENSITY,
+  INTENSITY_COLOURS,
+} from "./lib/intensity";
 
 const ICONS = {
   shopping: ShoppingBag,
@@ -140,7 +151,66 @@ export default function App() {
     [locationState, setLocationState] = useState(""),
     [locationBusy, setLocationBusy] = useState(false);
   const [panel, setPanel] = useState<"model" | "sources" | null>(null),
-    [sheetOpen, setSheetOpen] = useState(false);
+    [sheetOpen, setSheetOpen] = useState(false),
+    [explorerOpen, setExplorerOpen] = useState(true),
+    [detailOpen, setDetailOpen] = useState(true),
+    [sheetMotion, setSheetMotion] = useState(false);
+  const sheetDrag = useRef<{
+      y: number;
+      pointer: number;
+      moved: boolean;
+    } | null>(null),
+    ignoreSheetClick = useRef(false),
+    resultTrigger = useRef<HTMLButtonElement>(null);
+  const selectionTrigger = useRef<HTMLElement | null>(null);
+  // Only the dedicated handle owns this gesture; map and sheet content keep theirs.
+  const sheetHandle = {
+    onPointerDown: (event: PointerEvent<HTMLButtonElement>) => {
+      if (event.button !== 0 || event.isPrimary === false) return;
+      ignoreSheetClick.current = false;
+      sheetDrag.current = {
+        y: event.clientY,
+        pointer: event.pointerId,
+        moved: false,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+    },
+    onPointerMove: (event: PointerEvent<HTMLButtonElement>) => {
+      const drag = sheetDrag.current;
+      if (
+        drag &&
+        event.pointerId === drag.pointer &&
+        Math.abs(event.clientY - drag.y) > 36
+      ) {
+        drag.moved = true;
+      }
+    },
+    onPointerUp: (event: PointerEvent<HTMLButtonElement>) => {
+      const drag = sheetDrag.current;
+      if (drag && event.pointerId === drag.pointer && drag.moved) {
+        setSheetMotion(true);
+        setSheetOpen(event.clientY < drag.y);
+        ignoreSheetClick.current = true;
+      }
+      sheetDrag.current = null;
+    },
+    onPointerCancel: () => {
+      sheetDrag.current = null;
+      ignoreSheetClick.current = false;
+    },
+    onLostPointerCapture: () => {
+      sheetDrag.current = null;
+    },
+    onClick: (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (ignoreSheetClick.current && event.detail > 0) {
+        ignoreSheetClick.current = false;
+        return;
+      }
+      ignoreSheetClick.current = false;
+      setSheetMotion(event.detail > 0);
+      setSheetOpen((value) => !value);
+    },
+  };
   const dialog = useRef<HTMLDialogElement>(null),
     search = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -268,11 +338,26 @@ export default function App() {
         ? prefs.favourites.filter((x) => x !== id)
         : [...prefs.favourites, id],
     );
-  const choose = (id: string) => {
+  const choose = (id: string, keyboard = false) => {
+    selectionTrigger.current = document.activeElement as HTMLElement | null;
     setSelected(id);
     const cell = data?.cells.find((c) => c.id === id);
     if (cell) setFocus(data?.graph.nodes[cell.node].position ?? cell.centre);
-    setSheetOpen(false);
+    setSheetOpen(keyboard);
+    setDetailOpen(true);
+    setSheetMotion(false);
+    if (keyboard)
+      requestAnimationFrame(() =>
+        document.querySelector<HTMLElement>(".detail-card h2")?.focus(),
+      );
+  };
+  const closeSelection = () => {
+    setSelected(undefined);
+    const target = selectionTrigger.current;
+    if (target?.matches(".area-card")) setSheetOpen(true);
+    requestAnimationFrame(() =>
+      target?.isConnected ? target.focus() : resultTrigger.current?.focus(),
+    );
   };
   const locate = () => {
     if (!navigator.geolocation) {
@@ -329,8 +414,7 @@ export default function App() {
   if (!data || !context)
     return (
       <div className="loading-screen">
-        <Compass size={40} className="spin" />
-        <p className="eyebrow">FIELDNOTES · SOUTHAMPTON</p>
+        <Compass size={40} />
         <h1>Getting the lay of the land.</h1>
         <p>Loading real map data and experimental forecasts…</p>
       </div>
@@ -341,7 +425,7 @@ export default function App() {
     prefs.view !== "general" && data.demographics.share === null
       ? "General activity · demographics unavailable"
       : prefs.view === "general"
-        ? "Pedestrian activity"
+        ? "Activity intensity"
         : prefs.view === "uniform"
           ? "Uniform baseline"
           : "Activity · uniform resident prior";
@@ -349,7 +433,7 @@ export default function App() {
     ? Math.floor(context.hour)
     : time.hour;
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${sheetMotion ? "sheet-motion" : ""}`}>
       <header className="topbar">
         <a
           className="wordmark"
@@ -369,6 +453,20 @@ export default function App() {
           <span />
           Southampton, UK
         </span>
+        <button
+          className="explorer-toggle secondary"
+          aria-label={explorerOpen ? "Hide explorer" : "Show explorer"}
+          aria-expanded={explorerOpen}
+          aria-controls="explorer"
+          onClick={() => setExplorerOpen(!explorerOpen)}
+        >
+          {explorerOpen ? (
+            <PanelLeftClose size={17} />
+          ) : (
+            <PanelLeftOpen size={17} />
+          )}
+          <span>{explorerOpen ? "Hide explorer" : "Explore areas"}</span>
+        </button>
         <div className="top-actions">
           <span className="forecast-status">
             <span />
@@ -391,54 +489,53 @@ export default function App() {
           </button>
         </div>
       </header>
-      <main className="workspace">
+      <main
+        className={`workspace ${explorerOpen ? "" : "explorer-collapsed"} ${selectedCell ? "has-selection" : ""}`}
+      >
         <aside
+          id="explorer"
           className={`sidebar ${sheetOpen ? "expanded" : ""}`}
           aria-label="Forecast controls and ranked areas"
         >
           <button
             className="mobile-handle"
+            {...sheetHandle}
+            aria-expanded={sheetOpen}
+            aria-controls="explorer-content"
             aria-label={
-              sheetOpen ? "Collapse forecast panel" : "Expand forecast panel"
+              sheetOpen
+                ? "Collapse forecast panel · Back to map"
+                : `Expand forecast panel · Explore ${ranked.length} areas`
             }
-            onClick={() => setSheetOpen(!sheetOpen)}
           >
             <span />
+            <small>
+              {sheetOpen ? "Back to map" : `Explore ${ranked.length} areas`}
+            </small>
           </button>
-          <div className="sidebar-scroll">
+          <div className="sidebar-scroll" id="explorer-content">
             <div className="intro">
-              <p className="eyebrow">A DIFFERENT VIEW OF THE CITY</p>
-              <h1>
-                Where Southampton
-                <br /> comes together.
-              </h1>
-              <p>
-                Explore activity on public walking routes.
-                <br />
-                Choose a time. Find your next area.
-              </p>
+              <h1>Where Southampton comes together.</h1>
+              <p>Find an area. Choose your moment.</p>
             </div>
-            <div className="view-control">
-              <span className="small-label">
-                <Layers3 size={14} /> MAP VIEW
-              </span>
-              <label className="select-wrap">
-                <select
-                  aria-label="Map view"
-                  value={prefs.view}
-                  onChange={(e) =>
-                    setPreference("view", e.target.value as View)
-                  }
-                >
-                  <option value="women">
-                    Women 18–38 · uniform resident prior
-                  </option>
-                  <option value="general">General pedestrian activity</option>
-                  <option value="uniform">Uniform demographic baseline</option>
-                </select>
-                <ChevronDown size={16} />
-              </label>
-            </div>
+            <label className="search-box explorer-search">
+              <Search size={18} />
+              <input
+                ref={search}
+                aria-label="Search areas or businesses"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setResultLimit(40);
+                }}
+                placeholder="Find an area or business"
+              />
+              {query && (
+                <button aria-label="Clear search" onClick={() => setQuery("")}>
+                  <X size={16} />
+                </button>
+              )}
+            </label>
             <section className="time-card" aria-label="Forecast time">
               <div className="section-line">
                 <span>
@@ -583,122 +680,155 @@ export default function App() {
                 </p>
               )}
             </section>
-            <section className="walking-control">
-              <label className="typical-check">
-                <input
-                  type="checkbox"
-                  checked={limitToWalk}
-                  onChange={(e) => setLimitToWalk(e.target.checked)}
-                />
-                Limit ranked list to walking distance
-              </label>
-              <div className="section-line">
-                <span>
-                  <Footprints size={16} /> Walking distance
+            <details className="explore-options">
+              <summary>
+                <SlidersHorizontal size={16} /> Refine exploration{" "}
+                <span className="filter-status">
+                  {limitToWalk ? `${prefs.walk} min walk` : "Citywide"}
                 </span>
-                <select
-                  aria-label="Walking limit"
-                  value={prefs.walk}
-                  onChange={(e) =>
-                    setPreference("walk", Number(e.target.value))
-                  }
-                >
-                  {[10, 20, 30, 45].map((n) => (
-                    <option value={n} key={n}>
-                      {n} min
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="origin-line">
-                <MapPin size={14} />
-                <span>From {originName}</span>
-                <button
-                  onClick={locate}
-                  disabled={locationBusy}
-                  aria-label={
-                    locationBusy
-                      ? "Use my location · Locating…"
-                      : "Use my location · Near me"
-                  }
-                >
-                  <LocateFixed size={16} />
-                  {locationBusy ? "Locating…" : "Near me"}
-                </button>
-              </div>
-              <p className="inline-note">
-                The map shows all covered areas. List filters do not hide map
-                coverage.
-              </p>
-              {locationState && (
-                <p className="inline-note" role="status">
-                  {locationState}
-                </p>
-              )}
-              {!walking && (
-                <p className="inline-error">
-                  No supported public route from this starting point.
-                </p>
-              )}
-            </section>
-            <section className="category-section">
-              <div className="section-line">
-                <span>Places you’re interested in</span>
-                {prefs.categories.length > 0 && (
-                  <button
-                    className="text-button"
-                    onClick={() => setPreference("categories", [])}
+                <ChevronDown size={16} />
+              </summary>
+              <div className="view-control">
+                <label className="small-label" htmlFor="map-view">
+                  Activity layer
+                </label>
+                <div className="select-wrap">
+                  <select
+                    id="map-view"
+                    aria-label="Map view"
+                    value={prefs.view}
+                    onChange={(e) =>
+                      setPreference("view", e.target.value as View)
+                    }
                   >
-                    Clear
+                    <option value="general">General pedestrian activity</option>
+                    <option value="women">
+                      Women 18–38 · uniform resident prior
+                    </option>
+                    <option value="uniform">
+                      Uniform demographic baseline
+                    </option>
+                  </select>
+                  <ChevronDown size={16} />
+                </div>
+              </div>
+              <section className="walking-control">
+                <label className="typical-check">
+                  <input
+                    type="checkbox"
+                    checked={limitToWalk}
+                    onChange={(e) => setLimitToWalk(e.target.checked)}
+                  />
+                  Limit ranked list to walking distance
+                </label>
+                <div className="section-line">
+                  <span>
+                    <Footprints size={16} /> Walking distance
+                  </span>
+                  <select
+                    aria-label="Walking limit"
+                    value={prefs.walk}
+                    onChange={(e) =>
+                      setPreference("walk", Number(e.target.value))
+                    }
+                  >
+                    {[10, 20, 30, 45].map((n) => (
+                      <option value={n} key={n}>
+                        {n} min
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="origin-line">
+                  <MapPin size={14} />
+                  <span>From {originName}</span>
+                  <button
+                    onClick={locate}
+                    disabled={locationBusy}
+                    aria-label={
+                      locationBusy
+                        ? "Use my location · Locating…"
+                        : "Use my location · Near me"
+                    }
+                  >
+                    <LocateFixed size={16} />
+                    {locationBusy ? "Locating…" : "Near me"}
                   </button>
+                </div>
+                <p className="inline-note">
+                  The map shows all covered areas. List filters do not hide map
+                  coverage.
+                </p>
+                {locationState && (
+                  <p className="inline-note" role="status">
+                    {locationState}
+                  </p>
                 )}
-              </div>
-              <div className="category-chips">
-                {CATEGORIES.map((category) => {
-                  const Icon = ICONS[category];
-                  return (
+                {!walking && (
+                  <p className="inline-error">
+                    No supported public route from this starting point.
+                  </p>
+                )}
+              </section>
+              <section className="category-section">
+                <div className="section-line">
+                  <span>Places you’re interested in</span>
+                  {prefs.categories.length > 0 && (
                     <button
-                      key={category}
-                      className={
-                        prefs.categories.includes(category) ? "chosen" : ""
-                      }
-                      aria-pressed={prefs.categories.includes(category)}
-                      onClick={() => toggleCategory(category)}
+                      className="text-button"
+                      onClick={() => setPreference("categories", [])}
                     >
-                      <Icon size={14} />
-                      {CATEGORY_LABELS[category]}
+                      Clear
                     </button>
-                  );
-                })}
+                  )}
+                </div>
+                <div className="category-chips">
+                  {CATEGORIES.map((category) => {
+                    const Icon = ICONS[category];
+                    return (
+                      <button
+                        key={category}
+                        className={
+                          prefs.categories.includes(category) ? "chosen" : ""
+                        }
+                        aria-pressed={prefs.categories.includes(category)}
+                        onClick={() => toggleCategory(category)}
+                      >
+                        <Icon size={14} />
+                        {CATEGORY_LABELS[category]}
+                      </button>
+                    );
+                  })}
+                </div>
+                {prefs.categories.length > 0 && (
+                  <p className="filter-note">
+                    Matching areas first. Total activity scores stay unchanged.
+                  </p>
+                )}
+              </section>
+              <div className="baseline-notice">
+                <span className="notice-icon">
+                  <Info size={15} />
+                </span>
+                <div>
+                  <strong>
+                    {data.demographics.share === null
+                      ? "Demographic estimate unavailable"
+                      : fallback
+                        ? "Uniform demographic prior active"
+                        : "Experimental demographic model"}
+                  </strong>
+                  <p>
+                    {fallback
+                      ? "Visitor composition is unknown. Target rankings currently follow general pedestrian activity."
+                      : "Area differences use documented evidence and experimental assumptions."}
+                  </p>
+                  <button onClick={() => setPanel("model")}>
+                    Understand this forecast <ArrowUpRight size={12} />
+                  </button>
+                </div>
               </div>
-              {prefs.categories.length > 0 && (
-                <p className="filter-note">
-                  Matching areas first. Total activity scores stay unchanged.
-                </p>
-              )}
-            </section>
-            <div className="baseline-notice">
-              <span className="notice-icon">
-                <Info size={15} />
-              </span>
-              <div>
-                <strong>
-                  {data.demographics.share === null
-                    ? "Demographic estimate unavailable"
-                    : fallback
-                      ? "Uniform demographic prior active"
-                      : "Experimental demographic model"}
-                </strong>
-                <p>
-                  {fallback
-                    ? "Visitor composition is unknown. Target rankings currently follow general pedestrian activity."
-                    : "Area differences use documented evidence and experimental assumptions."}
-                </p>
-                <button onClick={() => setPanel("model")}>
-                  Understand this forecast <ArrowUpRight size={12} />
-                </button>
-              </div>
-            </div>
+            </details>
             <section className="results">
               <div className="results-heading">
                 <div>
@@ -706,7 +836,7 @@ export default function App() {
                     Areas to explore <span>{ranked.length}</span>
                   </h2>
                   <p>
-                    Ranked by unrounded activity · rounded reference percentile
+                    City rank by raw activity · intensity / 100
                     {prefs.categories.length ? " · matching places first" : ""}
                   </p>
                 </div>
@@ -719,46 +849,31 @@ export default function App() {
                   <Bookmark size={18} />
                 </button>
               </div>
-              <label className="search-box">
-                <Search size={16} />
-                <input
-                  ref={search}
-                  aria-label="Search areas or businesses"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Find an area or business"
-                />
-                {query && (
-                  <button
-                    aria-label="Clear search"
-                    onClick={() => setQuery("")}
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </label>
               <div className="result-list" aria-live="polite">
-                {ranked.slice(0, resultLimit).map((cell, i) => (
+                {ranked.slice(0, resultLimit).map((cell) => (
                   <button
                     key={cell.cell.id}
                     className={`area-card ${selected === cell.cell.id ? "selected" : ""}`}
                     data-cell-id={cell.cell.id}
                     data-raw={cell.activity}
                     data-index={cell.index}
+                    data-intensity={cell.intensity}
                     data-rank={cell.rank}
-                    onClick={() => choose(cell.cell.id)}
+                    onClick={(event) =>
+                      choose(cell.cell.id, event.detail === 0)
+                    }
                   >
                     <span className="area-number">
-                      {String(i + 1).padStart(2, "0")}
+                      {cell.cell.venueIds.length ? `#${cell.rank}` : "—"}
                     </span>
                     <span className="area-copy">
                       <strong>{cell.cell.label}</strong>
                       <span>
                         <Footprints size={12} />
                         {cell.minutes === undefined
-                          ? "Beyond walking limit"
-                          : `${Math.max(1, Math.ceil(cell.minutes))} min walk`}{" "}
-                        <span>·</span> {cell.cell.venueIds.length} contributors
+                          ? "Outside current walk"
+                          : `${Math.max(1, Math.ceil(cell.minutes))} min walk`}
+                        <span>·</span> {cell.cell.venueIds.length} anchors
                       </span>
                       <small>
                         {cell.cell.venueIds.length
@@ -774,11 +889,13 @@ export default function App() {
                       )}
                     </span>
                     <span
-                      className={`index-pill ${cell.index >= 75 ? "high" : cell.index >= 40 ? "medium" : "low"}`}
+                      className={`index-pill ${cell.intensity >= 75 ? "high" : cell.intensity >= 40 ? "medium" : "low"}`}
                     >
-                      {cell.cell.venueIds.length ? cell.index : "—"}
+                      {cell.cell.venueIds.length
+                        ? formatIntensity(cell.intensity)
+                        : "—"}
                       <span>
-                        {cell.cell.venueIds.length ? "pctl" : "no model"}
+                        {cell.cell.venueIds.length ? "intensity" : "no model"}
                       </span>
                     </span>
                     <ArrowRight size={15} className="card-arrow" />
@@ -805,6 +922,14 @@ export default function App() {
                         ? "Choose a valid local hour."
                         : "Try another search, increase your walking limit, or choose another starting area."}
                     </p>
+                    {limitToWalk && context.valid && (
+                      <button
+                        className="secondary"
+                        onClick={() => setLimitToWalk(false)}
+                      >
+                        Search all Southampton
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -868,12 +993,11 @@ export default function App() {
           </button>
           <div className="map-caption">
             <span className="tiny-dot" />
-            Historical inputs + modelled hourly patterns. No live crowd
-            readings.
+            Experimental estimates · empirical accuracy unvalidated
           </div>
           <div className="map-legend">
             <div>
-              <strong>Relative activity</strong>
+              <strong>Activity intensity</strong>
               <button
                 aria-label="Explain activity scale"
                 onClick={() => setPanel("model")}
@@ -881,31 +1005,77 @@ export default function App() {
                 <Info size={14} />
               </button>
             </div>
-            <div className="legend-gradient" />
+            <div
+              className="legend-gradient"
+              style={{
+                background: `linear-gradient(to right, ${INTENSITY_COLOURS.map(([at, colour]) => `${colour} ${at}%`).join(", ")})`,
+              }}
+            />
             <div>
-              <span>Lower</span>
-              <span>Higher</span>
+              <span>0 · Low</span>
+              <span>50</span>
+              <span>100 · High</span>
             </div>
-            <p>
-              Reference percentile · not a probability.
-              <br />
-              Grey: no contribution or no activity model.
+            <p>Fixed scale · not people or a percentile.</p>
+            <p className="legend-key">
+              <i className="gap-swatch" /> Grey dashes: coverage unknown
             </p>
+            <p className="legend-key">
+              <i className="zero-swatch" /> Pale: modelled low / zero
+            </p>
+            <p>Assumed patterns · no live observations</p>
           </div>
           <button
             className="mobile-results primary"
-            onClick={() => setSheetOpen(true)}
+            ref={resultTrigger}
+            onClick={(event) => {
+              setSelected(undefined);
+              setSheetOpen(true);
+              setSheetMotion(event.detail > 0);
+            }}
           >
             <ArrowDownUp size={17} />
-            Explore {ranked.length} areas <ChevronDown size={16} />
+            {selectedCell
+              ? "Back to areas"
+              : `Explore ${ranked.length} areas`}{" "}
+            <ChevronDown size={16} />
           </button>
           {selectedCell && (
-            <article className="detail-card" aria-label="Selected area details">
+            <article
+              className={`detail-card ${sheetOpen ? "expanded" : ""} ${detailOpen ? "" : "minimized"}`}
+              aria-label="Selected area details"
+            >
+              <button
+                className="mobile-handle"
+                {...sheetHandle}
+                aria-expanded={sheetOpen}
+                aria-controls="area-evidence"
+                aria-label={
+                  sheetOpen
+                    ? "Collapse area sheet · More map"
+                    : "Expand area sheet · More about this area"
+                }
+              >
+                <span />
+                <small>{sheetOpen ? "More map" : "More about this area"}</small>
+              </button>
               <div className="detail-topline">
-                <span className="eyebrow">
-                  AREA {selectedCell.cell.id.replace(":", " · ")}
+                <span className="area-coordinate">
+                  {data.cellMetres ?? 250} m area · {selectedCell.cell.id}
                 </span>
                 <div>
+                  <button
+                    className="icon-button detail-collapse"
+                    aria-label={
+                      detailOpen
+                        ? "Collapse area details"
+                        : "Expand area details"
+                    }
+                    aria-expanded={detailOpen}
+                    onClick={() => setDetailOpen(!detailOpen)}
+                  >
+                    <ChevronDown size={18} />
+                  </button>
                   <button
                     className={`icon-button ${prefs.favourites.includes(selectedCell.cell.id) ? "is-saved" : ""}`}
                     aria-label="Save selected area"
@@ -919,23 +1089,26 @@ export default function App() {
                   <button
                     className="icon-button"
                     aria-label="Close area details"
-                    onClick={() => setSelected(undefined)}
+                    onClick={closeSelection}
                   >
                     <X size={19} />
                   </button>
                 </div>
               </div>
-              <h2>{selectedCell.cell.label}</h2>
-              <p className="detail-subtitle">Public routes around this area</p>
+              <h2 tabIndex={-1}>{selectedCell.cell.label}</h2>
               <div className="detail-score">
                 <div>
                   <strong>
-                    {selectedCell.index}
-                    <span> reference percentile</span>
+                    {selectedCell.cell.venueIds.length
+                      ? formatIntensity(selectedCell.intensity)
+                      : "—"}
+                    <span> / 100 intensity</span>
                   </strong>
                   <span>
                     {selectedCell.cell.venueIds.length
-                      ? `${level(selectedCell.index)} · ${selectedCell.activity.toFixed(3)} model units`
+                      ? selectedCell.activity === 0
+                        ? "No scheduled model contribution"
+                        : `${level(selectedCell.intensity)} estimated activity`
                       : "No activity model for this cell"}
                   </span>
                 </div>
@@ -945,19 +1118,72 @@ export default function App() {
                 </span>
               </div>
               <div className="detail-sensitivity">
-                <SlidersHorizontal size={16} />
+                <ArrowDownUp size={16} />
                 <span>
-                  Citywide rank <strong>#{selectedCell.rank}</strong> ·
-                  stress-test range{" "}
-                  <strong>
-                    #{selectedCell.rankLow}–{selectedCell.rankHigh}
-                  </strong>
-                  <small>
-                    Assumption sensitivity, not a confidence interval.
-                  </small>
+                  {selectedCell.cell.venueIds.length ? (
+                    <>
+                      Citywide rank <strong>#{selectedCell.rank}</strong> of{" "}
+                      {data.cells.filter((cell) => cell.venueIds.length).length}{" "}
+                      modelled areas
+                    </>
+                  ) : (
+                    "Unranked · activity coverage unknown"
+                  )}
                 </span>
               </div>
-              <div className="detail-scroll">
+              <p className="detail-subtitle">
+                {formatDate(context.date)} · {String(hour).padStart(2, "0")}:00
+                UK time
+              </p>
+              <p className="selected-disclosure">
+                Experimental estimate · no observed pedestrian counts
+              </p>
+              <div className="detail-scroll" id="area-evidence">
+                <details className="evidence-section">
+                  <summary>Raw estimate & sensitivity</summary>
+                  <dl className="estimate-values">
+                    <div>
+                      <dt>Raw activity</dt>
+                      <dd>
+                        {selectedCell.cell.venueIds.length
+                          ? `${selectedCell.activity.toFixed(6)} model units`
+                          : "Unknown · coverage gap"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Legacy reference percentile</dt>
+                      <dd>
+                        {selectedCell.cell.venueIds.length
+                          ? selectedCell.index
+                          : "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Assumption stress ranks</dt>
+                      <dd>
+                        {selectedCell.cell.venueIds.length
+                          ? `#${selectedCell.rankLow}–${selectedCell.rankHigh}`
+                          : "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Intensity version</dt>
+                      <dd>{INTENSITY.version}</dd>
+                    </div>
+                  </dl>
+                  <p>
+                    Stress ranges vary uncertain assumptions; they are not
+                    confidence intervals. Intensity is 100 × raw / (raw +{" "}
+                    {INTENSITY.half.toFixed(6)}), fixed across time and
+                    geography. Empirical accuracy is unvalidated.
+                  </p>
+                  <button
+                    className="text-button"
+                    onClick={() => setPanel("model")}
+                  >
+                    Read the methodology <ArrowUpRight size={14} />
+                  </button>
+                </details>
                 {data.residentialContext &&
                   (() => {
                     const code =
@@ -966,13 +1192,13 @@ export default function App() {
                       (a) => a.code === code,
                     );
                     return (
-                      <section
+                      <details
                         className="residential-context"
                         aria-label="Residential demographic context"
                       >
-                        <h3>
+                        <summary>
                           Residential context · {data.residentialContext.year}
-                        </h3>
+                        </summary>
                         {area ? (
                           <p>
                             {area.name} ({area.code}):{" "}
@@ -999,126 +1225,162 @@ export default function App() {
                           </a>{" "}
                           · supporting single-age estimates.
                         </p>
-                      </section>
+                      </details>
                     );
                   })()}
-                <h3>What contributes here</h3>
-                {!selectedCell.cell.venueIds.length && (
-                  <p>
-                    No contributing activity anchors are modelled here. This is
-                    a coverage gap, not evidence of low pedestrian activity.
-                  </p>
-                )}
-                {!!selectedCell.cell.contextIds?.length && (
-                  <details className="context-places">
-                    <summary>
-                      Mapped context inventory (
-                      {selectedCell.cell.contextIds.length})
-                    </summary>
+                <details className="evidence-section contributor-disclosure">
+                  <summary>
+                    Contributing venues · {selectedCell.contributions.length}
+                  </summary>
+                  {!selectedCell.cell.venueIds.length && (
                     <p>
-                      These places are eligible for evidence review. Feature
-                      counts do not establish pedestrian flows.
+                      No contributing activity anchors are modelled here. This
+                      is a coverage gap, not evidence of low pedestrian
+                      activity.
                     </p>
-                    <ul>
-                      {data.contextPlaces
-                        ?.filter((p) =>
-                          selectedCell.cell.contextIds?.includes(p.id),
-                        )
-                        .map((p) => (
-                          <li key={p.id}>
-                            <a
-                              href={`https://www.openstreetmap.org/${p.id}`}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              {p.name}
-                            </a>{" "}
-                            · {p.kind} ·{" "}
-                            {venueLookup.has(p.id)
-                              ? "included in model inventory; see contributions/exclusions"
-                              : "additional activity unknown"}
-                            {p.hours
-                              ? ` · recorded hours: ${p.hours}`
-                              : " · hours unknown"}
-                            {p.access ? ` · access: ${p.access}` : ""}
-                          </li>
-                        ))}
-                    </ul>
-                  </details>
-                )}
-                {selectedCell.contributions.map((c) => (
-                  <VenueExplanation
-                    key={c.id}
-                    venue={venueLookup.get(c.id)!}
-                    contribution={c.value}
-                    cell={selectedCell.cell.id}
-                    context={context}
-                    tenants={data.venues.filter((v) => v.parent === c.id)}
-                    scenario={prefs.scenario}
+                  )}
+                  {!!selectedCell.cell.contextIds?.length && (
+                    <details className="context-places">
+                      <summary>
+                        Mapped context inventory (
+                        {selectedCell.cell.contextIds.length})
+                      </summary>
+                      <p>
+                        These places are eligible for evidence review. Feature
+                        counts do not establish pedestrian flows.
+                      </p>
+                      <ul>
+                        {data.contextPlaces
+                          ?.filter((p) =>
+                            selectedCell.cell.contextIds?.includes(p.id),
+                          )
+                          .map((p) => (
+                            <li key={p.id}>
+                              <a
+                                href={`https://www.openstreetmap.org/${p.id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                {p.name}
+                              </a>{" "}
+                              · {p.kind} ·{" "}
+                              {venueLookup.has(p.id)
+                                ? "included in model inventory; see contributions/exclusions"
+                                : "additional activity unknown"}
+                              {p.hours
+                                ? ` · recorded hours: ${p.hours}`
+                                : " · hours unknown"}
+                              {p.access ? ` · access: ${p.access}` : ""}
+                            </li>
+                          ))}
+                      </ul>
+                    </details>
+                  )}
+                  {selectedCell.contributions.map((c) => (
+                    <VenueExplanation
+                      key={c.id}
+                      venue={venueLookup.get(c.id)!}
+                      contribution={c.value}
+                      cell={selectedCell.cell.id}
+                      context={context}
+                      tenants={data.venues.filter((v) => v.parent === c.id)}
+                      scenario={prefs.scenario}
+                    />
+                  ))}
+                </details>
+                <details className="evidence-section hourly-disclosure">
+                  <summary>Activity through the day</summary>
+                  <label className="small-label" htmlFor="selected-hour">
+                    Selected-area hour · {String(hour).padStart(2, "0")}:00
+                  </label>
+                  <input
+                    id="selected-hour"
+                    aria-label="Selected-area hour"
+                    className="hour-slider"
+                    type="range"
+                    min="0"
+                    max="23"
+                    step="1"
+                    value={hour}
+                    onChange={(e) =>
+                      setTime({
+                        ...time,
+                        mode: time.mode === "typical" ? "typical" : "date",
+                        date: context.date,
+                        hour: Number(e.target.value),
+                      })
+                    }
                   />
-                ))}
-                <h3>Activity through the day</h3>
-                <div
-                  className="sparkline"
-                  aria-label="Experimental hourly activity for selected area"
-                >
-                  {Array.from({ length: 24 }, (_, h) => {
-                    const value = selectedCell.contributions.reduce(
-                      (sum, c) => {
-                        const venue = venueLookup.get(c.id)!;
-                        const hourly = venueActivity(venue, {
-                          ...context,
-                          hour: h,
-                        });
-                        return (
-                          sum +
-                          hourly.score *
-                            activityStressFactor(
-                              hourly,
-                              prefs.scenario === "sensitivity" ? 1 : 0,
-                            ) *
-                            (venue.catchment.find(
-                              (a) => a.cell === selectedCell.cell.id,
-                            )?.weight ?? 0)
-                        );
-                      },
-                      0,
-                    );
-                    return (
-                      <button
-                        key={h}
-                        aria-label={`Select ${String(h).padStart(2, "0")}:00`}
-                        title={`${h}:00 · ${value.toFixed(2)} relative units`}
-                        className={h === hour ? "current" : ""}
-                        style={{
-                          height: `${Math.max(5, displayIndex(value, data.reference.values))}%`,
-                        }}
-                        onClick={() =>
-                          setTime({
-                            ...time,
-                            mode: time.mode === "typical" ? "typical" : "date",
-                            date: context.date,
+                  <div
+                    className="sparkline"
+                    aria-label="Experimental hourly activity for selected area"
+                  >
+                    {Array.from({ length: 24 }, (_, h) => {
+                      const value = selectedCell.contributions.reduce(
+                        (sum, c) => {
+                          const venue = venueLookup.get(c.id)!;
+                          const hourly = venueActivity(venue, {
+                            ...context,
                             hour: h,
-                          })
-                        }
-                      />
-                    );
-                  })}
-                </div>
-                <div className="slider-ticks">
-                  <span>00:00</span>
-                  <span>12:00</span>
-                  <span>23:00</span>
-                </div>
-                <p className="detail-demographic">
-                  {selectedCell.demographicFallback
-                    ? "Uniform demographic fallback. No supported area-specific visitor share."
-                    : "Experimental visitor-share adjustment."}{" "}
-                  {data.demographics.share === null
-                    ? "No numerical demographic share is available."
-                    : `Provisional resident-context share: ${(data.demographics.share * 100).toFixed(1)}% (${data.demographics.reference}).`}{" "}
-                  This is not measured female presence.
-                </p>
+                          });
+                          return (
+                            sum +
+                            hourly.score *
+                              activityStressFactor(
+                                hourly,
+                                prefs.scenario === "sensitivity" ? 1 : 0,
+                              ) *
+                              (venue.catchment.find(
+                                (a) => a.cell === selectedCell.cell.id,
+                              )?.weight ?? 0)
+                          );
+                        },
+                        0,
+                      );
+                      return (
+                        <button
+                          key={h}
+                          aria-label={`Select ${String(h).padStart(2, "0")}:00`}
+                          title={`${h}:00 · ${value.toFixed(2)} relative units`}
+                          className={h === hour ? "current" : ""}
+                          style={{
+                            height: `${Math.max(1, activityIntensity(value))}%`,
+                          }}
+                          onClick={() =>
+                            setTime({
+                              ...time,
+                              mode:
+                                time.mode === "typical" ? "typical" : "date",
+                              date: context.date,
+                              hour: h,
+                            })
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                  <div className="slider-ticks">
+                    <span>00:00</span>
+                    <span>12:00</span>
+                    <span>23:00</span>
+                  </div>
+                  <p>
+                    Same fixed intensity scale as the map. Choose a bar to
+                    change the hour.
+                  </p>
+                </details>
+                <details className="evidence-section">
+                  <summary>Demographic assumptions</summary>
+                  <p className="detail-demographic">
+                    {selectedCell.demographicFallback
+                      ? "Uniform demographic fallback. No supported area-specific visitor share."
+                      : "Experimental visitor-share adjustment."}{" "}
+                    {data.demographics.share === null
+                      ? "No numerical demographic share is available."
+                      : `Provisional resident-context share: ${(data.demographics.share * 100).toFixed(1)}% (${data.demographics.reference}).`}{" "}
+                    This is not measured female presence.
+                  </p>
+                </details>
               </div>
               <div className="detail-actions">
                 <button
@@ -1127,6 +1389,7 @@ export default function App() {
                     setOrigin(data.graph.nodes[destinationNode].position);
                     setOriginName(selectedCell.cell.label);
                     setSelected(undefined);
+                    setSheetOpen(false);
                   }}
                 >
                   Start here
@@ -1155,7 +1418,6 @@ export default function App() {
       >
         <div className="dialog-heading">
           <div>
-            <p className="eyebrow">BEHIND THE MAP</p>
             <h2 id="information-title">
               {panel === "sources"
                 ? "Sources & freshness"
@@ -1242,18 +1504,22 @@ export default function App() {
                 may be stronger. Every number on this map is experimental.
               </p>
               <div className="formula">
-                Venue activity → public routes → provisional demographic share
+                Venue activity → public routes → intensity & city rank
               </div>
               <h3>What the colours mean</h3>
               <p>
                 We sum size-adjusted hourly venue contributions across reachable
-                public paths. A fixed reference week converts that total into a
-                rounded reference percentile. Many different raw totals can
-                share 96 or 97, and the top tail rounds to 100. These are not
-                quality ratings. Raw model units and city ranks distinguish
-                them. The scale stays fixed when you move the map, change time
-                or select categories. It is never an encounter probability or a
-                people-per-hour count.
+                public paths. Intensity uses the fixed formula 100 × raw / (raw
+                + {INTENSITY.half.toFixed(6)}). The constant is the positive
+                frozen reference’s 90th quantile: that activity level maps to
+                50; four times it maps to 80. Positive activity approaches 100
+                without a hard upper cutoff. This is a display policy, not a
+                percentile, occupancy or accuracy rating. City rank uses
+                unrounded raw activity separately. Decimal labels can tie; ranks
+                do not use those labels. The scale never changes with the map,
+                time or category selection. The former percentile remains in
+                area details. The raw model, dataset and legacy reference are
+                unchanged.
               </p>
               <h3>Women aged 18–38</h3>
               <p>
@@ -1299,8 +1565,10 @@ export default function App() {
                 provisional components. Campus containers and nested building
                 venues are not counted again. Accommodation, ordinary bus stops,
                 workplaces, hospitals, pedestrian streets and events lack
-                supported trip volumes and remain incomplete or contextual. Grey
-                cells may have no activity model. General activity is therefore
+                supported trip volumes and remain incomplete or contextual.
+                Dashed grey cells have no allocated activity anchors; pale cells
+                with anchors have modelled zero or low activity. Neither
+                establishes actual emptiness. General activity is therefore
                 incomplete, even where map coverage exists.
               </p>
               <p>
@@ -1348,7 +1616,7 @@ export default function App() {
               <p>
                 There is no integrated live busyness feed, reusable Southampton
                 footfall series or visitor-demographic measurement. Unsupported
-                areas are left uncoloured. Quiet-looking areas can reflect
+                areas have dashed grey outlines. Quiet-looking areas can reflect
                 incomplete venue coverage. Pedestrian passages, unique people
                 and people simultaneously present are separate quantities; none
                 is being counted here.
@@ -1363,6 +1631,8 @@ export default function App() {
               </p>
               <p className="model-version">
                 Model {data.modelVersion} · Data {data.version}
+                <br />
+                Intensity {INTENSITY.version} · empirical accuracy unvalidated
                 <br />
                 Reference {data.reference.version}, frozen{" "}
                 {formatDate(data.reference.frozenAt)}

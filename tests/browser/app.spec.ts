@@ -16,6 +16,7 @@ test("desktop forecasts, filters, explanations and saved areas", async ({
     .locator(".area-card .index-pill")
     .first()
     .textContent();
+  await page.locator(".explore-options > summary").click();
   await page.getByLabel("Map view", { exact: true }).selectOption("general");
   await expect(page.locator(".area-card .index-pill").first()).toHaveText(
     firstScore!,
@@ -118,6 +119,7 @@ test("location is requested only on demand, denial and unavailable storage remai
   expect(await page.evaluate(() => (window as any).__locationCalls ?? 0)).toBe(
     0,
   );
+  await page.locator(".explore-options > summary").click();
   await page.getByLabel("Use my location").click();
   await expect(
     page.getByText(

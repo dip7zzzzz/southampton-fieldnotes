@@ -20,6 +20,7 @@ for (const width of [1440, 390]) {
       .click();
     await page.getByLabel("Forecast date").fill("2026-10-30");
     await page.getByLabel("Forecast hour").fill("23");
+    await page.locator(".explore-options > summary").click();
     await page.getByLabel("Limit ranked list to walking distance").uncheck();
     await page
       .getByRole("button", { name: "Pubs, bars & nightlife", exact: true })
@@ -39,12 +40,13 @@ for (const width of [1440, 390]) {
       name: "Selected area details",
     });
     await expect(details).toBeVisible();
-    const residential = details.getByRole("region", {
-      name: "Residential demographic context",
-    });
+    if (width === 390) await page.getByLabel("Expand area sheet").click();
+    const residential = details.locator(".residential-context");
+    await residential.locator(":scope > summary").click();
     await expect(residential).toContainText("2024");
     await expect(residential).toContainText("not a measured cell population");
     await expect(residential).toContainText("does not change activity scores");
+    await details.locator(".contributor-disclosure > summary").click();
     await expect(details.locator(".venue-row").first()).toBeVisible();
     await details.locator(".venue-row summary").first().click();
     await expect(details).toContainText("uncalibrated hypothesis");

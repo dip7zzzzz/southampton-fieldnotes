@@ -5,6 +5,10 @@ MapLibre and OpenFreeMap. Publicly published for GitHub Pages testing.
 Scientific model experimental-0.2.1 includes expanded destination functions,
 network allocation and separate aggregate residential context.
 
+Fieldnotes v2 adds a map-first explorer and mobile rankings/area sheet.
+Intensity is versioned separately as `intensity-1.0.0`; the raw scientific model,
+dataset, frozen reference and city rankings are preserved.
+
 Open or share: https://dip7zzzzz.github.io/southampton-fieldnotes/
 No GitHub account is needed to visit on iPhone Safari or Android.
 
@@ -18,8 +22,17 @@ areas again where needed.
 
 ## Scientific limitations
 
-Scores are rounded reference percentiles, not people/hour, probabilities or
-accuracy ratings. Raw model units and city ranks are also shown. Size proxies,
+The main score is a continuous relative intensity index, displayed to one decimal:
+`100 × raw / (raw + 0.7040438337879282)`. The fixed anchor is P90 of positive
+values in the retained `reference-55e49f63e2ca` quantile grid. Its activity level
+maps to50, four times it to80; the scale never refits to the selected hour or map.
+This is an explicit display convention, not an observed scientific calibration.
+Scores are not people/hour, percentiles, occupancy, probabilities or accuracy
+ratings. Raw model units, the legacy percentile and assumption stress ranks remain
+expandable. City rank uses unrounded activity; ties in displayed intensity do not
+reorder it. Dashed grey cells have unknown activity coverage, while pale cells with
+anchors have modelled zero/low activity. No observations are substituted for either.
+Size proxies,
 hourly curves and outdoor factors are assumptions. No independent pedestrian
 counts validate the rankings. The women-aged-18–38 view uses a uniform resident
 prior with no visitor-demographic differentiation. Teaching buildings, food
@@ -35,7 +48,8 @@ Model explanations and source provenance remain visible in the application.
 
 Requires Node 24. Run `npm ci`, then `npm run dev`.
 The prepared public dataset is included; normal use does not fetch Overpass or
-Nomis. External tiles/fonts require internet; cached OSM paths provide fallback.
+Nomis. External tiles require internet; cached OSM paths provide fallback. The UI
+uses local system fonts.
 Windows users can use Open Fieldnotes.cmd for persistent local preview.
 
 Local research utilities: `npm run data:residential`, `npm run data:university`,
@@ -44,6 +58,14 @@ source/baseline evidence; normal app builds do not. Preparation retains the froz
 reference. Source validation, uncertainty and comparison reports remain local
 under the existing ignored-artifact policy. No observed accuracy improvement or
 count calibration has been established.
+
+`npm run compare:intensity` checks the original/pre-S3 archive and exact released
+S3 source/data snapshot, compares seven display alternatives across six scenarios
+and twelve approximate district windows, and asserts raw/rank invariance. Detailed
+local reports and complete per-cell comparisons are in `docs/fieldnotes-v2/`.
+These archives/reports remain private under the existing ignore policy; normal
+application builds do not depend on them. See `DESIGN.md` for interface tokens,
+legend semantics and interaction behaviour.
 
 Checks: `npm test`, `npm run typecheck`, `npm run build`, `npm run test:browser`.
 Browser checks use installed Microsoft Edge. Set FIELDNOTES_TEST_URL to target

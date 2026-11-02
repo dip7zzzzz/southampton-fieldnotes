@@ -41,6 +41,7 @@ for (const size of [
     await page
       .getByRole("button", { name: "Date & time", exact: true })
       .click();
+    await page.locator(".explore-options > summary").click();
     await page.getByLabel("Limit ranked list to walking distance").uncheck();
     const topIds: string[] = [];
     for (const [name, date, hour] of scenarios) {
@@ -112,6 +113,7 @@ for (const size of [
       name: "Selected area details",
     });
     await expect(details).toBeVisible();
+    if (size.width < 720) await page.getByLabel("Expand area sheet").click();
     await expect(details).toContainText("model units");
     const direction = details.getByRole("link", { name: /Walking directions/ });
     await expect(direction).toHaveAttribute(
@@ -149,6 +151,7 @@ test("layer, category, sort and term controls preserve raw totals where required
   await page.getByRole("button", { name: "Typical week", exact: true }).click();
   await page.getByLabel("Typical weekday").selectOption("3");
   await page.getByLabel("Forecast hour").fill("12");
+  await page.locator(".explore-options > summary").click();
   const cards = () =>
     page.locator(".area-card").evaluateAll((rows) =>
       rows.map((r) => ({
@@ -272,7 +275,7 @@ test("successful remote style followed by tile failure restores cached paths", a
   );
   await expect(page.locator(".map-canvas")).toHaveAttribute(
     "data-map-layers",
-    "4",
+    "5",
   );
   await page.screenshot({
     path: "docs/audit/tile-failure.png",
@@ -284,6 +287,7 @@ test("unmodelled coverage is explicit; arbitrary searches do not hide the map", 
   page,
 }) => {
   await page.goto("./");
+  await page.locator(".explore-options > summary").click();
   await page.getByLabel("Limit ranked list to walking distance").uncheck();
   await page.getByLabel("Search areas or businesses").fill("no-such-place-xyz");
   await expect(page.locator(".area-card")).toHaveCount(0);

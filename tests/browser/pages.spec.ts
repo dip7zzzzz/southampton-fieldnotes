@@ -36,6 +36,7 @@ for (const width of [1440, 390]) {
       .click();
     await page.getByLabel("Forecast date").fill("2026-10-28");
     await page.getByLabel("Forecast hour").fill("12");
+    await page.locator(".explore-options > summary").click();
     await page.getByLabel("Walking limit").selectOption("45");
     await expect(page.locator(".area-card").first()).toBeVisible();
     expect(
