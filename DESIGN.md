@@ -1,26 +1,37 @@
 ---
-name: Southampton Fieldnotes
-description: A restrained green map interface for experimental relative activity.
+name: "Southampton Fieldnotes — Atlas"
+description: "Midnight Atlas: an illustrated reference scene with a separate scientific explorer."
 colors:
-  paper: "#f4f6f0"
-  surface: "#ffffff"
-  ink: "#203e30"
-  muted: "#536655"
-  line: "#dce4d8"
-  green: "#245a3b"
-  accent: "#d8e9c5"
-  soft: "#eaf0e3"
-  dark-paper: "#1b2922"
-  dark-surface: "#26382e"
-  dark-ink: "#e4eddd"
-  dark-muted: "#b6c6b1"
-  dark-line: "#405342"
-  dark-green: "#c2dda7"
-  dark-accent: "#44613a"
-  dark-soft: "#314634"
-  focus: "#709345"
-  error: "#9a4029"
-  dark-error: "#f3b5a0"
+  canvas: "#04080c"
+  header: "#050709"
+  ink: "#f4f6fa"
+  muted: "#cbd1d9"
+  line: "#3c4751"
+  focus: "#49d9ff"
+  selected-outline: "#0391ff"
+  comparison-blue: "#0061f7"
+  directions-cyan: "#00b5ee"
+  directions-ink: "#001d2c"
+  candidate-green: "#8ded6e"
+  dialog: "#111c29"
+  illustration-ramp-0: "#d6f7c5"
+  illustration-ramp-1: "#bff4a3"
+  illustration-ramp-2: "#8ae269"
+  illustration-ramp-3: "#6ada44"
+  illustration-ramp-4: "#31ce1c"
+  illustration-ramp-5: "#08bf00"
+  illustration-ramp-6: "#00a300"
+  illustration-ramp-7: "#008500"
+  scientific-paper: "#080c12"
+  scientific-surface: "#151c25"
+  scientific-ink: "#f5f7fb"
+  scientific-muted: "#b1becd"
+  scientific-line: "#3b4858"
+  scientific-action: "#49d6fa"
+  scientific-accent: "#092951"
+  scientific-soft: "#202c3a"
+  scientific-blue: "#066be5"
+  scientific-cyan: "#40dbfa"
   intensity-0: "#edf3ea"
   intensity-25: "#c6d8b8"
   intensity-50: "#88ad78"
@@ -29,345 +40,182 @@ colors:
   coverage-unknown: "#98a59c"
   coverage-dash: "#71857b"
 typography:
-  body:
-    fontFamily: '"Segoe UI", system-ui, sans-serif'
-    fontSize: "14px"
-  title:
-    fontFamily: '"Segoe UI", system-ui, sans-serif'
-    fontSize: "23px"
-    fontWeight: 650
-    letterSpacing: "-0.03em"
-  section:
-    fontFamily: '"Segoe UI", system-ui, sans-serif'
-    fontSize: "16px"
-    fontWeight: 650
-  label:
-    fontFamily: '"Segoe UI", system-ui, sans-serif'
-    fontSize: "12px"
-    fontWeight: 600
+  wordmark:
+    fontFamily: "Arial, Helvetica, sans-serif"
+    fontSize: "calc(min(1vw, 14.87px) * 1.61)"
+    fontWeight: 300
+    letterSpacing: "-0.025em"
   area-name:
-    fontFamily: '"Segoe UI", system-ui, sans-serif'
-    fontSize: "13px"
+    fontFamily: "Arial, Helvetica, sans-serif"
+    fontSize: "calc(min(1vw, 14.87px) * 1.4)"
     fontWeight: 600
+    lineHeight: 1.12
   score:
-    fontFamily: '"Segoe UI", system-ui, sans-serif'
-    fontSize: "34px"
-    fontWeight: 650
-    lineHeight: 1.1
-    letterSpacing: "-0.035em"
+    fontFamily: "Arial, Helvetica, sans-serif"
+    fontSize: "calc(min(1vw, 14.87px) * 3.5)"
+    fontWeight: 600
+    lineHeight: 1.15
+    letterSpacing: "-0.025em"
+  label:
+    fontFamily: "Arial, Helvetica, sans-serif"
+    fontSize: "calc(min(1vw, 14.87px) * 1.04)"
+  dialog-title:
+    fontFamily: "Arial, Helvetica, sans-serif"
+    fontSize: "26px"
+  scientific-body:
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
 rounded:
-  control: "8px"
-  field: "9px"
-  chip: "7px"
-  segment: "6px"
-  overlay: "12px"
-  detail: "14px"
-  dialog: "16px"
-  sheet: "18px"
+  control: "12px"
+  search: "13px"
+  action: "17px"
+  legend: "22px"
+  dialog: "24px"
+  candidate: "30px"
+  dock: "calc(min(1vw, 14.87px) * 4.2)"
 spacing:
   tight: "8px"
-  control: "10px"
-  compact: "12px"
-  inset: "14px"
-  panel: "16px"
-  section: "20px"
-  wide: "24px"
+  compact: "10px"
+  inset: "12px"
+  gap: "14px"
+  control: "16px"
+  candidate: "18px"
+  dialog: "30px"
 components:
-  button-primary:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.surface}"
-    typography: "{typography.label}"
-    rounded: "{rounded.control}"
-    padding: "10px 14px"
-  button-secondary:
-    backgroundColor: "{colors.surface}"
+  button-control:
+    backgroundColor: "linear-gradient(130deg, #0e1216, #1b2026)"
     textColor: "{colors.ink}"
-    typography: "{typography.label}"
     rounded: "{rounded.control}"
-    padding: "10px 14px"
-  button-secondary-hover:
-    backgroundColor: "{colors.soft}"
-  button-primary-dark:
-    backgroundColor: "{colors.dark-green}"
-    textColor: "{colors.dark-paper}"
+    typography: "{typography.label}"
+    padding: "0 calc(min(1vw, 14.87px) * 1.02)"
+  button-directions:
+    backgroundColor: "linear-gradient(#75eaff, #00b5ee)"
+    textColor: "{colors.directions-ink}"
+    rounded: "{rounded.action}"
+  button-compare:
+    backgroundColor: "linear-gradient(#179eff, #0061f7)"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.action}"
   search-field:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "linear-gradient(140deg, #11161a, #1a2025)"
     textColor: "{colors.ink}"
-    rounded: "{rounded.field}"
-    padding: "0 12px"
-  category-chip:
-    backgroundColor: "{colors.surface}"
+    rounded: "{rounded.search}"
+    padding: "0 16px"
+  candidate-active:
+    backgroundColor: "linear-gradient(135deg, #063a7c, #03204b 65%, #07316c)"
     textColor: "{colors.ink}"
-    rounded: "{rounded.chip}"
-    padding: "9px"
-  category-chip-chosen:
-    backgroundColor: "{colors.soft}"
-  time-segment-active:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.surface}"
-    rounded: "{rounded.segment}"
-  area-row-selected:
-    backgroundColor: "{colors.soft}"
+    rounded: "{rounded.candidate}"
+    padding: "14px 18px"
+  reference-legend:
+    backgroundColor: "#090f13"
     textColor: "{colors.ink}"
-    padding: "14px 7px"
-  selected-area:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.detail}"
-    padding: "16px"
-    width: "330px"
-  intensity-legend:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.overlay}"
-    padding: "14px"
-    width: "252px"
+    rounded: "{rounded.legend}"
+    padding: "14px 18px 16px"
+  dialog:
+    backgroundColor: "{colors.dialog}"
+    rounded: "{rounded.dialog}"
+    padding: "30px"
 ---
 
-# Design System: Southampton Fieldnotes
+# Design System: Southampton Fieldnotes — Atlas
 
 ## Overview
 
-**Creative North Star: "Fieldnotes"**
+**Creative North Star: "Midnight Atlas"**
 
-Fieldnotes is a functional map workspace with a restrained dark green identity,
-pale paper surfaces and compact supporting controls. The map carries spatial
-information; the explorer supplies time, filters and ranked areas; selected-area
-details make the estimate inspectable. Dark mode preserves this hierarchy with
-forest surfaces and light sage text.
+Atlas places a luminous green map illustration between a compact midnight tool bar and a sculpted comparison dock. Electric blue marks the selected candidate; icy cyan carries Directions. The user selected the original Atlas reference (`.impeccable/mocks/atlas-approved.png`) and explicitly requested its supplied map illustration and reference values. This replaces the City Edition visual record with the implemented Atlas system.
 
-This records the implemented V2 interface, using PROJECT.md as product authority.
-The CSS and React components are the implementation evidence; this file and its
-sidecar describe their reusable visual rules. Typography remains the incumbent
-system sans. The interface keeps experimental status, missing coverage and model
-assumptions visible alongside numerical results.
+The default screen is an interactive illustration implemented in `src/IllustratedAtlas.tsx` and `src/illustrated-atlas.css`. Its supplied raster asset is `src/assets/atlas-illustration.png`; origin and drawn markers are embedded artwork. The complete scientific explorer remains accessible with `?view=scientific`, implemented by `src/App.tsx`, `src/atlas.css` and `src/components/ActivityMap.tsx`. PROJECT.md remains canonical product authority. These are distinct visual/data surfaces. This document records implementation, not scientific validation or an automated fidelity pass.
 
 **Key Characteristics:**
 
-- Map-first desktop and mobile composition.
-- Restrained green identity with tonal paper surfaces.
-- Compact controls and tabular numerical comparisons.
-- Progressive evidence disclosures and explicit missingness.
-- Functional, input-aware motion.
+- Midnight framing, dimensional blue selection and cyan actions.
+- A supplied illustrated map cropped with CSS rather than redrawn geography.
+- Native text, controls, candidate selection and modal disclosures around the image.
+- A horizontal desktop comparison dock that becomes stacked rows on phones.
+- An explicit path from fixed reference content to the preserved scientific explorer.
 
 ## Colors
 
-The interface uses deep green for action and identity, sage for selection, and
-quiet green-tinted neutrals for structure. Frontmatter names preserve the source
-CSS roles; `dark-` entries are their system dark-mode overrides.
-The sidecar's synthesized tonal ramps are inspection previews derived from these
-colors; they are not additional application colors or a replacement palette.
-
 ### Primary
 
-- **Forest action green** (`green`): control accents, selected chip borders, range
-  inputs and activity numerals. `ink` fills primary actions in light mode.
-- **Sage accent** (`accent`): text selection and saved-state accents. The darker
-  `dark-accent` plays the corresponding role on forest surfaces.
-- **Light sage action** (`dark-green`): primary actions and active time segments
-  in dark mode, with `dark-paper` text.
+Comparison blue anchors the selected candidate and Compare action. Directions cyan distinguishes the primary destination action, while focus uses its own bright cyan token. Selected gradients, borders and inset light work together; a flat fill alone does not describe the implemented surface.
+
+### Secondary
+
+Candidate green outlines unselected letter circles. The illustration's eight green legend samples reproduce the supplied reference's visual character and belong exclusively to that scene.
 
 ### Neutral
 
-- **Paper / dark paper**: shell and explorer background.
-- **Surface / dark surface**: fields, overlays, dialog and detail container.
-- **Ink / dark ink**: primary text and headings.
-- **Muted / dark muted**: contextual text and secondary metadata.
-- **Line / dark line**: dividers and control borders.
-- **Soft / dark soft**: selected rows, chip selection and segmented-control track.
-- **Focus**: keyboard outline shared across both themes.
-- **Error / dark error**: textual errors, accompanied by an explanation.
+Canvas and header are near-black; light ink and muted grey carry content. Blue-grey strokes separate controls, dock and dialogs. Large gradients create the dock's material. There is no alternate light theme for this illustrated surface.
 
-### Activity encoding
+### Scientific encoding
 
-The five `intensity-*` colors are continuous interpolation stops, from pale to
-dark green at 0, 25, 50, 75 and 100. MapLibre and the legend import the same
-`INTENSITY_COLOURS` constant in `src/lib/intensity.ts`; these are not five
-percentile classes. The ramp stays the same in light and dark themes.
+The scientific explorer uses its own prefixed neutral/action tokens above, sourced from `src/atlas.css`. Its continuous intensity scale remains the five stops owned by `src/lib/intensity.ts`. Unknown coverage retains grey fill and dashed boundaries; it is not modelled low activity. Cyan selection and pale-green comparison outlines are overlays, not changes to intensity encoding.
 
-Unknown coverage uses `coverage-unknown` with a subdued fill and
-`coverage-dash` outlines. Map fill opacity is 0.08 for unknown cells and 0.7 for
-modelled cells. Unknown cell outlines use a `[3, 3]` dash pattern. The legend's
-grey dashed swatch and pale modelled-low/zero swatch retain that distinction.
-
-**The Missingness Rule.** Coverage unknown must remain visually and verbally
-distinct from modelled zero; neither state establishes actual emptiness.
+**The Separate Scales Rule.** The illustration's eight vivid samples must never replace the scientific explorer's fixed five-stop continuous scale.
 
 ## Typography
 
-The observed family for body, controls, headings and numerals is Segoe UI with
-system-ui and sans-serif fallbacks. There is no separate editorial display or
-monospace family. The frontmatter records reusable roles, not a modular ratio.
+The illustrated surface uses Arial with Helvetica and generic sans-serif fallbacks. The wordmark pairs bold Southampton with lighter Fieldnotes. Semibold candidate names wrap freely beside ringed letters. Large scores use tabular numerals and smaller, lighter `/100` suffixes. Scientific controls retain the platform sans stack in frontmatter.
 
-- **Title**: explorer and selected-area headings; the explorer uses line-height
-  1.18, and its mobile heading becomes 22px.
-- **Section**: ranked-area heading.
-- **Body**: inherited root size; dense interface copy generally uses 12–13px.
-  Dialog body is 13px with line-height 1.8; mobile form fields are 16px.
-- **Label**: action and section labels. Area names use the `area-name` role,
-  increasing to 14px on mobile.
-- **Score**: selected-area intensity; ranking rows use a smaller 21px value.
-  Scores, rank, date and hour comparisons use tabular numerals.
-
-Compact metadata currently reaches 9–11px in several places. Those sizes are
-implementation observations, not a minimum or a recommendation for future text.
-The system face serves the existing data interface; it is not a decorative
-display-type prescription.
-
-**The Number Rule.** Preserve tabular numerals for comparisons and keep intensity,
-city rank, relative raw units and assumption sensitivity separately labelled.
+Desktop type scales with the capped viewport unit. The active desktop score uses a smaller multiplier (3.1) than other scores. At widths up to 1100px, names become 15px and scores 32px; up to 720px, names become 13px and scores 25px, with `/100` hidden. Phone wordmark size is 21px. Dialog headings are 26px and paragraphs use 1.6 line-height. No serif display face is used.
 
 ## Layout
 
-The app fills `100dvh` with a fixed-height header and a workspace occupying the
-remainder. The map grows into available width; panels scroll internally. The
-minimum body width is 320px. Safe-area insets are included in the top header and
-mobile bottom spacing.
+The illustrated shell fills 100dvh with a 580px minimum height. Its rows are header, flexible clipped map, comparison dock and disclosure footer. The desktop unit is `min(1vw, 14.87px)`; header/dock/footer row multipliers are 3.9, 16.28 and 4.84. The header is a flex row. The dock has 15.65% side regions around fluid candidates, 12px outer horizontal margins and a larger active candidate flex share (1.42).
 
-- **Above 1100px**: the header is 66px plus the top safe-area inset. The explorer
-  occupies 354px beside the flexible map. Its toggle hides the explorer and
-  leaves a single flexible map column. The selected-area overlay is 330px wide on the
-  map's right, independently scrollable and collapsible.
-- **721–1100px**: the explorer narrows to 318px, side padding reduces, and the
-  detail overlay is 300px wide. Selected header metadata is hidden.
-- **At 720px and below**: the header is 58px plus the top inset. The map fills
-  the workspace beneath it; the explorer becomes a bottom sheet. The initial
-  explorer peek is 160px plus the bottom inset. Selecting an area replaces the
-  explorer with a 334px selection peek plus the bottom inset. Expanded sheets
-  occupy workspace height minus 92px. On screens at most 680px high, that gap
-  reduces to 40px. A labelled action opens rankings or returns to areas.
+The map is a size container. Its wrapper is horizontally centered at `max(100%, 216.764cqh)` width. The asset is cropped through 154.2274% image height and -8.4548% top offset. This is a reference-specific crop, not a map projection. Reset and zoom sit at upper right; the legend is near lower right. At 360px and below the legend moves left to avoid controls.
 
-Use the observed 8–24px spacing vocabulary for controls and panels, with 16–20px
-map-edge insets. Ranked areas are a divided list, not a grid of floating cards.
-The mobile legend is 200px wide above the explorer peek and hidden while an area
-is selected; the same scale explanation remains in the model information dialog.
-The legend is 252px wide on desktop.
+At 1100px and below, the header becomes a four-column grid with brand/search on the first row. The dock is 225px tall; its side regions become 110px and 125px. At 720px and below, the header becomes two columns: full-width brand and search, paired date/hour, then filter/saved controls. The dock becomes three stacked rows with All areas and Compare above. The map retains a 160px minimum row; the shell allows overflow on constrained heights. Safe-area insets apply to phone header/footer.
+
+Scientific responsiveness remains separately implemented in `src/atlas.css` and inherited `src/styles.css`. Do not impose the illustration's fixed row proportions on its live controls and evidence panels.
 
 ## Elevation & Depth
 
-Borders and surface tones structure the explorer and lists. Soft shadows lift
-map overlays and the mobile explorer above geographic content; depth indicates
-spatial overlap rather than adding decoration to every result.
+Depth is structural: dark gradients, cool strokes and inner highlights separate native controls from the raster map. The dock combines an inset highlight (`inset 0 3px 15px #b9e6ff26`) with an ambient shadow (`0 16px 35px #0009`). Selected candidates combine inset blue glow and exterior blue shadow. Compare has an inset highlight. Modal separation uses a midnight surface and dark translucent backdrop (`#01060cc9`).
 
-The CSS shadow variable is `0 8px 30px #183c2420` in light mode and
-`0 8px 30px #09190f40` in dark mode. The mobile explorer has an upward
-`0 -6px 26px #183c241c` shadow. The modal backdrop is `#142d24aa`.
-The sidecar carries these values because frontmatter has no shadow token group.
-
-**The Overlay Rule.** Reserve the shared soft shadow for surfaces that overlap
-the map; use dividers and tonal selection for ranked rows.
+There is no ornamental entrance choreography in the illustration. Panning and zooming directly transform the image wrapper. Pointer-capable button hover brightens to 1.15; keyboard focus is a 3px cyan outline with 3px offset. The reduced-motion rule disables any map-image transition.
 
 ## Shapes
 
-Controls use gently curved corners. The frontmatter distinguishes button,
-field, chip and segment radii from larger overlay, selected-area and dialog
-corners. Mobile sheets use the `sheet` radius on their top corners only.
-Ranked rows remain square and separated by a single bottom border. The mobile
-sheet handle is a short rounded bar with an accompanying text label, not the
-only affordance for opening the panel.
+Controls are rounded rectangles; grouped zoom buttons share a clipped outer shape and dividing stroke. The desktop dock is a large capsule enclosing rounded candidates. Phone rows/dock use tighter corners. Letter badges are circular; transparent map hit targets are elliptical with visible keyboard focus. Dialogs are rounded rectangles constrained to the viewport and independently scrollable.
 
 ## Components
 
-### Buttons
+### Header and search
 
-Primary actions use the frontmatter's filled primary treatment, reversing to
-light sage on dark paper in dark mode. Secondary actions use a surface fill
-and one-pixel line border. Both use compact semibold labels, control corners
-and a 42px minimum height in the shared style. Icon buttons are 40px square on
-desktop and 44px square on mobile.
+Native form/input search matches the three illustrated names and opens the areas dialog on submission. A clear action appears when text exists. Date/hour show the fixed scene (28 October 2026, 12:00); clicking explains that editable forecast time is in the scientific explorer. Filters discloses the fixed illustration and links to scientific controls.
 
-Fine-pointer hover softens secondary actions into the `soft` surface; primary
-actions brighten. Active buttons darken with `brightness(0.94)`. Disabled buttons
-use opacity 0.55 and a wait cursor. Visible keyboard focus is a 3px solid focus
-outline with a 3px offset on buttons, links, inputs, selects and summaries.
-Keep hover styling inside the fine-pointer, hover-capable media query.
+### Candidate dock and map selection
 
-### Inputs / Fields
+A is Poundland (91.6, 7 min), B is Sir John Everett Millais Building East (92.0, 7 min), and C is Starbucks (28.3, 9 min). B is initially selected. Native transparent hit targets cover drawn A/B/C markers and share selection with dock buttons. Selection updates the native dock, not embedded raster artwork. Directions and About this estimate appear for the active candidate.
 
-Search has a surface fill, one-pixel line border, field corners and a 44px minimum
-container height. Its input is transparent. Selects use surface fill and visible
-borders; the larger selector has a 44px minimum height. Mobile inputs and selects
-use 16px text. Preserve native input behaviour, caret visibility and labelled
-controls; errors are explanatory text with the theme's error color.
+**The Reference Truth Rule.** Illustrated names, scores, walking times, date and map are fixed reference content; never describe them as computed forecasts or validated geography.
 
-### Chips
+### Map controls and legend
 
-Category filters wrap with small gaps. The chosen state uses a soft fill and green
-border, with `aria-pressed` state in the component. Their observed minimum height
-is 40px on desktop and 44px on mobile. Their selected treatment is distinct from
-the filled active time segment.
+Zoom changes in quarter steps from 1× to 3×. Drag pans above 1×; pan is bounded after dragging, zoom-out and resize. Reset restores 1× and centered pan. The origin marker is embedded artwork, not live geolocation. The native legend shows eight adjacent green samples, 0/100 labels and an unknown-coverage symbol. Clicking opens the illustration disclosure.
 
-### Navigation
+### Dialogs, saved places and navigation
 
-The time selector is a soft segmented track with a filled active segment. Dialog
-tabs use a bottom border for the active state and a minimum height of 44px.
-The explorer toggle advertises expanded state and target; the mobile panel
-handles do likewise. Preserve the existing heading and control labels rather
-than relying on icons or color alone.
+Native modal dialogs support Escape, backdrop close, labelled close and focus return. All areas filters the three names; Compare shows the reference trio. Saved places toggles reference letters in React state for the current mount, without persistent storage. Rows select and close; bookmark buttons expose pressed state. Empty states explain search/saved results. About, Filters and Directions explicitly disclose fixed content and link to the scientific explorer. Directions does not launch a route from raster geography.
 
-### Ranked areas and selected area
-
-Rows show rank, area name, secondary evidence text and an intensity value.
-Selection uses the soft surface; fine-pointer hover uses the same tonal family.
-The detail container separates the headline score from assumption sensitivity
-and scrollable evidence disclosures. Keyboard area selection expands the mobile
-detail sheet immediately and focuses its heading; closing restores the originating
-row or the areas trigger. Details and dialog content scroll independently.
-The selected-area hour slider supplies a visible input equivalent to the compact
-hourly bars; it uses the same time state and fixed intensity display policy.
-
-### Mobile sheets and motion
-
-The dedicated handle is the only drag surface. It captures the primary pointer;
-movement beyond 36px marks a snap gesture, and release direction opens or closes
-the sheet. This is a two-state snap, not a continuously tracking drag. Cancellation
-clears gesture state. Map panning and content scrolling keep their own gestures.
-The labelled handle also works as a button. A generated pointer click after a
-swipe is suppressed; keyboard clicks remain available and the next pointer press
-starts a fresh gesture.
-
-Pointer sheet changes use only `transform` over 240ms with
-`cubic-bezier(0.32, 0.72, 0, 1)` when reduced motion is not requested. Keyboard
-changes and reduced-motion sheet changes are instant. Desktop explorer resizing
-has no animated width. This source-level contract does not certify device-level
-gesture feel; physical iOS verification remains separate.
-
-### Activity intensity legend
-
-The continuous legend labels 0 as low, 50 as midpoint and 100 as high. Its visible
-copy says the scale is fixed, not people or a percentile, and that patterns are
-assumed without live observations. Its explanation control opens the model
-dialog. Grey dashes and pale modelled-low/zero are separate keyed states.
-
-Intensity is the independently versioned display policy `intensity-1.0.0`:
-`100 × raw / (raw + 0.7040438337879282)`. The constant is the linear 90th
-quantile of the 587 positive values in the frozen reference's 1001-quantile grid
-(`reference-55e49f63e2ca`), an approximate reference rather than recovered weekly
-observations. The half constant maps to 50; four times it maps to 80. Positive
-finite activity approaches 100 without a hard upper cutoff. Keep this mapping
-fixed across time, map extent and category filters.
-
-Labels use one decimal, `<0.1` for positive intensity below 0.05 and `>99.9` at
-or above 99.95. Raw zero displays as 0. Rounded labels may tie. City rank derives
-from unrounded raw activity separately; the legacy reference percentile remains
-in area details. The model, dataset and legacy reference are independent of this
-display policy. Neither a stronger shade nor a changed hotspot demonstrates
-observed accuracy, occupancy, pedestrian counts or demographic presence.
+The footer retains “Experimental estimates, not pedestrian counts.” and “Illustrative view · Open scientific map.” The separate scientific explorer retains editable date/hour, model ranking/comparison, destination directions and evidence tools.
 
 ## Do's and Don'ts
 
 ### Do:
 
-- **Do** keep the map primary and make evidence reachable through the explorer and selected-area disclosures.
-- **Do** use the shared intensity ramp and fixed mapping for the map, legend and hourly intensity display.
-- **Do** retain separate labels for intensity, unrounded city rank, relative raw units and assumption sensitivity.
-- **Do** preserve focus outlines, labelled sheet controls, safe-area spacing and instant keyboard/reduced-motion sheet changes.
-- **Do** show coverage unknown separately from modelled zero and keep the experimental caveat visible.
+- **Do** preserve the supplied illustration, its crop and approved midnight/blue/cyan framing.
+- **Do** keep the illustration disclosure and scientific-map route visible and usable.
+- **Do** distinguish native selected state from markers embedded in the image.
+- **Do** retain scientific intensity, coverage distinction and scientific controls.
+- **Do** preserve responsive stacking, wrapping names and visible keyboard focus.
 
 ### Don't:
 
-- **Don't** normalize intensity to the current viewport, hour, filter or current maximum.
-- **Don't** present intensity as a percentile, headcount, accuracy rating, female presence or encounter probability.
-- **Don't** use the whole map or sheet content as a sheet drag surface.
-- **Don't** treat compact legacy metadata or undersized secondary controls as ideals for new surfaces.
-- **Don't** add a new brand palette, decorative display face or blanket card shadow without a new design decision.
+- **Don't** feed fixed illustrated values into forecasting, ranking or scientific comparisons.
+- **Don't** claim reference directions, walking times or raster geography are validated.
+- **Don't** replace the scientific continuous ramp with the illustration's vivid samples.
+- **Don't** describe screenshots, user acceptance or source documentation as a passed automated fidelity gate.
+- **Don't** recreate the rejected City Edition paper/forest interface as the default Atlas world.

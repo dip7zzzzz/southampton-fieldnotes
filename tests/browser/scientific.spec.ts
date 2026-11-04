@@ -10,48 +10,72 @@ for (const width of [1440, 390]) {
     );
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.goto("./");
+    await page.goto("./?view=scientific");
     await expect(
-      page.getByRole("heading", { name: /Where Southampton/ }),
+      page.getByRole("link", { name: "Southampton Fieldnotes. home" }),
     ).toBeVisible();
-    if (width === 390) await page.getByLabel("Expand forecast panel").click();
+    await page.locator(".time-options > summary").click();
     await page
       .getByRole("button", { name: "Date & time", exact: true })
       .click();
+    await page.locator(".time-options > summary").click();
     await page.getByLabel("Forecast date").fill("2026-10-30");
-    await page.getByLabel("Forecast hour").fill("23");
-    await page.locator(".explore-options > summary").click();
+    await page.getByLabel("Forecast hour", { exact: true }).selectOption("23");
+    if (width === 390) await page.getByLabel("Expand forecast panel").click();
+    await page.getByRole("button", { name: "Filters", exact: true }).click();
     await page.getByLabel("Limit ranked list to walking distance").uncheck();
     await page
       .getByRole("button", { name: "Pubs, bars & nightlife", exact: true })
       .click();
+    await page.getByRole("button", { name: "All areas", exact: true }).click();
     const first = page.locator(".area-card").first();
     await expect(first).toBeVisible();
     expect(Number(await first.getAttribute("data-raw"))).toBeGreaterThan(0);
     const raw = await first.getAttribute("data-raw"),
       cell = await first.getAttribute("data-cell-id");
+    await page
+      .getByRole("button", { name: "About this estimate", exact: true })
+      .first()
+      .click();
+    await page
+      .getByRole("button", { name: "Assumptions", exact: true })
+      .click();
     await page.getByLabel("Map view", { exact: true }).selectOption("women");
+    await page.keyboard.press("Escape");
     await expect(
       page.locator(`.area-card[data-cell-id="${cell}"]`),
     ).toHaveAttribute("data-raw", raw!);
+    await page
+      .getByRole("button", { name: "About this estimate", exact: true })
+      .first()
+      .click();
+    await page
+      .getByRole("button", { name: "Assumptions", exact: true })
+      .click();
     await page.getByLabel("Map view", { exact: true }).selectOption("general");
+    await page.keyboard.press("Escape");
     await first.click();
     const details = page.getByRole("article", {
       name: "Selected area details",
     });
     await expect(details).toBeVisible();
-    if (width === 390) await page.getByLabel("Expand area sheet").click();
-    const residential = details.locator(".residential-context");
+    await page
+      .getByRole("button", { name: "About this estimate", exact: true })
+      .first()
+      .click();
+    await page.getByRole("button", { name: "This area", exact: true }).click();
+    const evidence = page.getByRole("dialog", { name: "About this estimate" });
+    const residential = evidence.locator(".residential-context");
     await residential.locator(":scope > summary").click();
     await expect(residential).toContainText("2024");
     await expect(residential).toContainText("not a measured cell population");
     await expect(residential).toContainText("does not change activity scores");
-    await details.locator(".contributor-disclosure > summary").click();
-    await expect(details.locator(".venue-row").first()).toBeVisible();
-    await details.locator(".venue-row summary").first().click();
-    await expect(details).toContainText("uncalibrated hypothesis");
+    await evidence.locator(".contributor-disclosure > summary").click();
+    await expect(evidence.locator(".venue-row").first()).toBeVisible();
+    await evidence.locator(".venue-row summary").first().click();
+    await expect(evidence).toContainText("uncalibrated hypothesis");
     await page.screenshot({
-      path: `docs/scientific-v02/scientific-${width}.png`,
+      path: `docs/atlas-2026-11-04/scientific-browser/scientific-${width}.png`,
       animations: "disabled",
     });
     expect(

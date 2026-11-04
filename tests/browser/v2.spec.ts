@@ -3,58 +3,76 @@ import AxeBuilder from "@axe-core/playwright";
 
 async function fixedNoon(page: Page, mobile = false) {
   await page.route("https://tiles.openfreemap.org/**", (r) => r.abort());
-  await page.goto("./");
+  await page.goto("./?view=scientific");
   await expect(page.locator(".map-canvas")).toHaveAttribute(
     "data-activity-loaded",
     "true",
     { timeout: 45000 },
   );
-  if (mobile) await page.getByLabel("Expand forecast panel").click();
+  await page.locator(".time-options > summary").click();
   await page.getByRole("button", { name: "Date & time", exact: true }).click();
+  await page.locator(".time-options > summary").click();
   await page.getByLabel("Forecast date").fill("2026-10-28");
-  await page.getByLabel("Forecast hour").fill("12");
+  await page.getByLabel("Forecast hour", { exact: true }).selectOption("12");
+  if (mobile) await page.getByLabel("Expand forecast panel").click();
 }
 
-test("v2 desktop explorer and area details collapse independently; scores retain raw ranks", async ({
+test("desktop dock expands while time and full-width map remain available; evidence retains raw ranks", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await fixedNoon(page);
   const host = page.locator(".map-canvas");
   const width = (await host.boundingBox())!.width;
-  await page.getByLabel("Hide explorer").click();
-  await expect(page.locator(".sidebar")).not.toBeVisible();
-  await expect
-    .poll(async () => (await host.boundingBox())!.width)
-    .toBeGreaterThan(width + 300);
-  await page.getByLabel("Show explorer").click();
+  await expect(page.locator(".sidebar")).not.toHaveClass(/expanded/);
+  await page.locator(".dock-compare").click();
+  await expect(page.locator(".sidebar")).toHaveClass(/expanded/);
+  await expect(page.getByLabel("Forecast date", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Forecast hour", { exact: true })).toBeVisible();
+  await expect.poll(async () => (await host.boundingBox())!.width).toBe(width);
+  await page.locator(".dock-compare").click();
+  await expect(page.locator(".sidebar")).not.toHaveClass(/expanded/);
+  await page.getByRole("button", { name: "All areas", exact: true }).click();
   const row = page.locator(".area-card").first();
   const raw = Number(await row.getAttribute("data-raw"));
   const intensity = Number(await row.getAttribute("data-intensity"));
   expect(intensity).toBeGreaterThan(0);
   expect(intensity).toBeLessThan(100);
   await expect(row.locator(".index-pill")).toContainText(intensity.toFixed(1));
-  await expect(row.locator(".area-number")).toHaveText(
+  await expect(row.locator(".area-rank")).toContainText(
     `#${await row.getAttribute("data-rank")}`,
   );
   await row.click();
   const area = page.getByRole("article", { name: "Selected area details" });
   await expect(area).toContainText("28 Oct 2026");
-  await expect(area).toContainText("no observed pedestrian counts");
-  await area.getByText("Raw estimate & sensitivity", { exact: true }).click();
-  await expect(area).toContainText(`${raw.toFixed(6)} model units`);
-  await page.getByLabel("Collapse area details", { exact: true }).click();
-  await expect(area.locator(".detail-scroll")).not.toBeVisible();
-  await page.getByLabel("Expand area details", { exact: true }).click();
-  await expect(area.locator(".detail-scroll")).toBeVisible();
+  await expect(page.locator(".desktop-disclosure")).toContainText(
+    "not pedestrian counts",
+  );
+  await expect(page.locator(".desktop-disclosure")).toContainText(
+    "Empirical accuracy unvalidated",
+  );
+  await expect(page.locator(".sidebar .detail-card")).toBeVisible();
+  await page
+    .getByRole("button", { name: "About this estimate", exact: true })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "This area", exact: true }).click();
+  const evidence = page.getByRole("dialog", { name: "About this estimate" });
+  await evidence
+    .getByText("Raw estimate & sensitivity", { exact: true })
+    .click();
+  await expect(evidence).toContainText(`${raw.toFixed(6)} model units`);
+  await page.keyboard.press("Escape");
+  await expect(evidence).not.toBeVisible();
+  await expect(area).toBeVisible();
   await page.screenshot({
-    path: "docs/fieldnotes-v2/after/selected-desktop.png",
+    path: "docs/atlas-2026-11-04/scientific-browser/selected-desktop.png",
     animations: "disabled",
   });
   await page.getByLabel("Close area details").click();
   await page.locator(".sidebar-scroll").evaluate((el) => (el.scrollTop = 0));
   await page.screenshot({
-    path: "docs/fieldnotes-v2/after/desktop.png",
+    path: "docs/atlas-2026-11-04/scientific-browser/desktop.png",
     animations: "disabled",
   });
 });
@@ -70,9 +88,11 @@ test("v2 keyboard opens selected evidence and restores focus to its area", async
   await page.getByLabel("Close area details").focus();
   await page.keyboard.press("Enter");
   await expect(row).toBeFocused();
-  await page.getByLabel("Hide explorer").focus();
+  const compare = page.locator(".dock-compare");
+  await compare.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByLabel("Show explorer")).toBeFocused();
+  await expect(page.locator(".sidebar")).not.toHaveClass(/expanded/);
+  await expect(compare).toBeFocused();
 });
 
 test("v2 mobile sheet touch gestures do not move map; map touch panning remains independent", async ({
@@ -86,7 +106,9 @@ test("v2 mobile sheet touch gestures do not move map; map touch panning remains 
   const page = await context.newPage();
   // This context is explicitly new, so relative navigation uses the configured target.
   await page.route("https://tiles.openfreemap.org/**", (r) => r.abort());
-  await page.goto(test.info().project.use.baseURL!);
+  await page.goto(
+    new URL("?view=scientific", test.info().project.use.baseURL!).href,
+  );
   const host = page.locator(".map-canvas");
   await expect(host).toHaveAttribute("data-activity-loaded", "true", {
     timeout: 45000,
@@ -115,34 +137,66 @@ test("v2 mobile sheet touch gestures do not move map; map touch panning remains 
   await expect(page.locator(".sidebar")).toHaveClass(/expanded/);
   await expect(host).toHaveAttribute("data-map-centre", centre!);
   await expect(page.getByLabel("Search areas or businesses")).toBeVisible();
+  // Wait for the pointer-triggered transition, not just its destination class,
+  // before aiming the next gesture at the handle's settled position.
+  await page.locator(".sidebar").evaluate(async (element) => {
+    await Promise.all(
+      element.getAnimations().map((animation) => animation.finished),
+    );
+  });
   const expandedHandle = (await page
     .getByLabel("Collapse forecast panel")
     .boundingBox())!;
   await swipe(195, expandedHandle.y + 16, expandedHandle.y + 155);
   await expect(page.locator(".sidebar")).not.toHaveClass(/expanded/);
-  await swipe(78, 270, 365);
+  await page.locator(".sidebar").evaluate(async (element) => {
+    await Promise.all(
+      element.getAnimations().map((animation) => animation.finished),
+    );
+  });
+  const mapBounds = (await host.boundingBox())!;
+  await swipe(
+    mapBounds.x + mapBounds.width * 0.75,
+    mapBounds.y + mapBounds.height * 0.4,
+    mapBounds.y + mapBounds.height * 0.65,
+  );
   await expect
     .poll(() => host.getAttribute("data-map-centre"))
     .not.toBe(centre);
   await page.getByLabel("Expand forecast panel").click();
+  await page.locator(".time-options > summary").click();
   await page.getByRole("button", { name: "Date & time", exact: true }).click();
+  await page.locator(".time-options > summary").click();
   await page.getByLabel("Forecast date").fill("2026-10-28");
-  await page.getByLabel("Forecast hour").fill("12");
+  await page.getByLabel("Forecast hour", { exact: true }).selectOption("12");
   await page.locator(".area-card").first().click();
-  await expect(page.locator(".sidebar")).not.toBeVisible();
-  await expect(page.getByLabel("Expand area sheet")).toBeVisible();
+  await expect(page.locator(".sidebar")).toBeVisible();
+  await expect(page.locator(".sidebar .candidate-row.selected")).toBeVisible();
+  await expect(page.locator(".mobile-handle")).toHaveCount(1);
+  await expect(page.getByLabel("Expand forecast panel")).toBeVisible();
   await expect(page.locator(".selected-disclosure")).toBeInViewport({
     ratio: 1,
   });
   await page.screenshot({
-    path: "docs/fieldnotes-v2/after/selected-mobile.png",
+    path: "docs/atlas-2026-11-04/scientific-browser/selected-mobile.png",
     animations: "disabled",
   });
-  await page.getByLabel("Expand area sheet").click();
+  await page
+    .getByRole("button", { name: "About this estimate", exact: true })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "This area", exact: true }).click();
   await page.locator(".contributor-disclosure > summary").click();
   await expect(page.locator(".venue-row").first()).toBeVisible();
-  await page.getByLabel("Collapse area sheet").click();
-  await page.getByRole("button", { name: /Back to areas/ }).click();
+  await page.keyboard.press("Escape");
+  await page.getByLabel("Expand forecast panel").click();
+  await page.getByLabel("Close area details").click();
+  if (
+    !(await page
+      .locator(".sidebar")
+      .evaluate((el) => el.classList.contains("expanded")))
+  )
+    await page.getByLabel("Expand forecast panel").click();
   await page.getByLabel("Collapse forecast panel").click();
   await page.getByLabel("Show Southampton coverage").click();
   await expect
@@ -153,7 +207,7 @@ test("v2 mobile sheet touch gestures do not move map; map touch panning remains 
     .toBeGreaterThan(0);
   await expect(host).toHaveAttribute("data-activity-loaded", "true");
   await page.screenshot({
-    path: "docs/fieldnotes-v2/after/mobile.png",
+    path: "docs/atlas-2026-11-04/scientific-browser/mobile.png",
     animations: "disabled",
   });
   await context.close();
@@ -168,7 +222,7 @@ test("v2 loading remains explicit until real data arrive", async ({ page }) => {
     await gate;
     await route.continue();
   });
-  await page.goto("./", { waitUntil: "domcontentloaded" });
+  await page.goto("./?view=scientific", { waitUntil: "domcontentloaded" });
   await expect(
     page.getByRole("heading", { name: "Getting the lay of the land." }),
   ).toBeVisible();
@@ -185,9 +239,11 @@ for (const width of [320, 390, 768, 1440]) {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await fixedNoon(page, width <= 720);
     if (width <= 720) await page.getByLabel("Collapse forecast panel").click();
-    await expect(page.locator(".map-legend")).toContainText("coverage unknown");
     await expect(page.locator(".map-legend")).toContainText(
-      "not people or a percentile",
+      /unknown coverage|coverage unknown/i,
+    );
+    await expect(page.locator(".map-legend")).toHaveAccessibleName(
+      /fixed scale; not people or a percentile/,
     );
     expect(
       await page.evaluate(

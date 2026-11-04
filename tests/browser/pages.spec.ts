@@ -19,7 +19,7 @@ for (const width of [1440, 390]) {
     const dataset = page.waitForResponse((r) =>
       r.url().endsWith("/data/southampton.json"),
     );
-    await page.goto("./");
+    await page.goto("./?view=scientific");
     await expect(page.locator(".map-title-card")).toContainText("125 m cells");
     expect((await dataset).status()).toBe(200);
     expect((await dataset).headers()["content-type"]).toContain(
@@ -30,13 +30,15 @@ for (const width of [1440, 390]) {
       "true",
       { timeout: 45000 },
     );
-    if (width === 390) await page.getByLabel("Expand forecast panel").click();
+    await page.locator(".time-options > summary").click();
     await page
       .getByRole("button", { name: "Date & time", exact: true })
       .click();
+    await page.locator(".time-options > summary").click();
     await page.getByLabel("Forecast date").fill("2026-10-28");
-    await page.getByLabel("Forecast hour").fill("12");
-    await page.locator(".explore-options > summary").click();
+    await page.getByLabel("Forecast hour", { exact: true }).selectOption("12");
+    if (width === 390) await page.getByLabel("Expand forecast panel").click();
+    await page.getByRole("button", { name: "Filters", exact: true }).click();
     await page.getByLabel("Walking limit").selectOption("45");
     await expect(page.locator(".area-card").first()).toBeVisible();
     expect(
@@ -50,7 +52,7 @@ for (const width of [1440, 390]) {
     expect(failures).toEqual([]);
     expect(errors).toEqual([]);
     await page.screenshot({
-      path: `.cache/deployment/pages-${width}.png`,
+      path: `docs/atlas-2026-11-04/scientific-browser/pages-${width}.png`,
       animations: "disabled",
     });
   });

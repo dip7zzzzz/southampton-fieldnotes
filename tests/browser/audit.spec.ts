@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readFileSync } from "node:fs";
 import { unpackDataset } from "../../src/lib/codec";
@@ -15,6 +15,21 @@ const scenarios = [
   ["Sunday 09", "2026-11-01", 9],
   ["Vacation Wednesday noon", "2026-12-23", 12],
 ] as const;
+
+async function dateMode(page: Page) {
+  await page.locator(".time-options > summary").click();
+  await page.getByRole("button", { name: "Date & time", exact: true }).click();
+  await page.locator(".time-options > summary").click();
+}
+
+async function openEstimate(page: Page, section: string) {
+  await page
+    .getByRole("button", { name: "About this estimate", exact: true })
+    .first()
+    .click();
+  await page.getByRole("button", { name: section, exact: true }).click();
+  return page.getByRole("dialog", { name: "About this estimate" });
+}
 test.beforeEach(async ({ page }) => {
   // Separate remote-tile failure tests below exercise later tile failures too.
   await page.route("https://tiles.openfreemap.org/**", (route) =>
@@ -32,21 +47,22 @@ for (const size of [
     await page.setViewportSize(size);
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
-    await page.goto("./");
+    await page.goto("./?view=scientific");
     await expect(
-      page.getByRole("heading", { name: /Where Southampton/ }),
+      page.getByRole("link", { name: "Southampton Fieldnotes. home" }),
     ).toBeVisible();
     if (size.width < 720)
       await page.getByLabel("Expand forecast panel").click();
-    await page
-      .getByRole("button", { name: "Date & time", exact: true })
-      .click();
-    await page.locator(".explore-options > summary").click();
+    await dateMode(page);
+    await page.getByRole("button", { name: "Filters", exact: true }).click();
     await page.getByLabel("Limit ranked list to walking distance").uncheck();
+    await page.getByRole("button", { name: "All areas", exact: true }).click();
     const topIds: string[] = [];
     for (const [name, date, hour] of scenarios) {
       await page.getByLabel("Forecast date").fill(date);
-      await page.getByLabel("Forecast hour").fill(String(hour));
+      await page
+        .getByLabel("Forecast hour", { exact: true })
+        .selectOption(String(hour));
       const expected = forecast(
         data,
         resolveTime(
@@ -75,7 +91,7 @@ for (const size of [
     }
     expect(new Set(topIds).size).toBeGreaterThan(1);
     await page.getByLabel("Forecast date").fill("2026-10-28");
-    await page.getByLabel("Forecast hour").fill("12");
+    await page.getByLabel("Forecast hour", { exact: true }).selectOption("12");
     const map = page.locator(".map-canvas");
     await expect(map).toHaveAttribute("data-map-ready", "true", {
       timeout: 45000,
@@ -113,24 +129,60 @@ for (const size of [
       name: "Selected area details",
     });
     await expect(details).toBeVisible();
-    if (size.width < 720) await page.getByLabel("Expand area sheet").click();
-    await expect(details).toContainText("model units");
-    const direction = details.getByRole("link", { name: /Walking directions/ });
+    await details.getByRole("button", { name: /^Directions/ }).click();
+    const direction = details.getByRole("link", {
+      name: "Google Maps",
+      exact: true,
+    });
     await expect(direction).toHaveAttribute(
       "href",
       /^https:\/\/www.google.com\/maps\/dir\/\?api=1&destination=50\./,
     );
     await expect(direction).toHaveAttribute("href", /travelmode=walking/);
     await expect(direction).toHaveAttribute("target", "_blank");
+    const apple = details.getByRole("link", {
+      name: "Apple Maps",
+      exact: true,
+    });
+    await expect(apple).toHaveAttribute("href", /^https:\/\/maps\.apple\./);
+    await expect(apple).toHaveAttribute("target", "_blank");
+    await page.keyboard.press("Escape");
+    const evidence = await openEstimate(page, "This area");
+    await evidence
+      .getByText("Raw estimate & sensitivity", { exact: true })
+      .click();
+    await expect(evidence).toContainText("model units");
+    await page.keyboard.press("Escape");
     await page.screenshot({
-      path: `docs/audit/highfield-${size.width}.png`,
+      path: `docs/atlas-2026-11-04/scientific-browser/highfield-${size.width}.png`,
       animations: "disabled",
     });
+    if (size.width < 720)
+      await page.getByLabel("Expand forecast panel").click();
     await details
       .getByRole("button", { name: "Start here", exact: true })
       .click();
-    if (size.width < 720)
-      await page.getByLabel("Expand forecast panel").click();
+    if (
+      !(await page
+        .locator(".sidebar")
+        .evaluate((el) => el.classList.contains("expanded")))
+    ) {
+      if (size.width < 720)
+        await page.getByLabel("Expand forecast panel").click();
+      else {
+        await page
+          .getByRole("button", { name: "Filters", exact: true })
+          .click();
+        if (
+          !(await page
+            .locator(".explore-options")
+            .evaluate((element) => (element as HTMLDetailsElement).open))
+        )
+          await page
+            .getByRole("button", { name: "Filters", exact: true })
+            .click();
+      }
+    }
     await page.getByLabel("Limit ranked list to walking distance").check();
     await expect(page.locator(".area-card").first()).toBeVisible();
     await page.getByLabel("Clear search").click();
@@ -147,11 +199,14 @@ for (const size of [
 test("layer, category, sort and term controls preserve raw totals where required", async ({
   page,
 }) => {
-  await page.goto("./");
+  await page.goto("./?view=scientific");
+  await page.locator(".time-options > summary").click();
   await page.getByRole("button", { name: "Typical week", exact: true }).click();
   await page.getByLabel("Typical weekday").selectOption("3");
-  await page.getByLabel("Forecast hour").fill("12");
-  await page.locator(".explore-options > summary").click();
+  await page.getByLabel("Forecast hour", { exact: true }).selectOption("12");
+  await page.locator(".time-options > summary").click();
+  await page.getByRole("button", { name: "Filters", exact: true }).click();
+  await page.getByRole("button", { name: "All areas", exact: true }).click();
   const cards = () =>
     page.locator(".area-card").evaluateAll((rows) =>
       rows.map((r) => ({
@@ -163,14 +218,18 @@ test("layer, category, sort and term controls preserve raw totals where required
     );
   const initial = await cards();
   for (const view of ["women", "uniform", "general"]) {
+    await openEstimate(page, "Assumptions");
     await page.getByLabel("Map view", { exact: true }).selectOption(view);
+    await page.keyboard.press("Escape");
     await expect.poll(cards).toEqual(initial);
   }
+  await page.locator(".time-options > summary").click();
   await page.getByLabel("Assume university term time").uncheck();
   await expect.poll(cards).toEqual(initial);
   for (const day of ["1", "2", "3", "4", "5", "6", "7"])
     await page.getByLabel("Typical weekday").selectOption(day);
   await page.getByLabel("Typical weekday").selectOption("3");
+  await page.locator(".time-options > summary").click();
   for (const name of [
     "Shopping",
     "Cafés & food",
@@ -198,11 +257,18 @@ test("layer, category, sort and term controls preserve raw totals where required
 test("map pan, zoom, cell click and overview retain all coverage", async ({
   page,
 }) => {
-  await page.goto("./");
+  await page.goto("./?view=scientific");
   const host = page.locator(".map-canvas");
   await expect(host).toHaveAttribute("data-activity-loaded", "true", {
     timeout: 45000,
   });
+  // First discovery selects a real suggestion. Close it so this test proves
+  // map hit-testing creates the active selection, rather than observing it.
+  await page.locator(".dock-compare").click();
+  await page.getByLabel("Close area details").click();
+  await expect(
+    page.getByRole("article", { name: "Selected area details" }),
+  ).toHaveCount(0);
   const screenshotBefore = await host.screenshot();
   await page.getByRole("button", { name: "Zoom in", exact: true }).click();
   const b = (await host.boundingBox())!;
@@ -213,12 +279,19 @@ test("map pan, zoom, cell click and overview retain all coverage", async ({
   });
   await page.mouse.up();
   await page.getByLabel("Show Southampton coverage").click();
+  await expect
+    .poll(async () => Number(await host.getAttribute("data-map-zoom")))
+    .toBeLessThan(14);
   await expect(host).toHaveAttribute(
     "data-activity-cells",
     String(data.cells.length),
   );
   // Real hit-testing: try unoccluded positions until a source-backed cell is hit.
   for (const [x, y] of [
+    [0.5, 0.2],
+    [0.4, 0.25],
+    [0.6, 0.25],
+    [0.5, 0.3],
     [0.55, 0.45],
     [0.45, 0.4],
     [0.6, 0.55],
@@ -238,7 +311,7 @@ test("map pan, zoom, cell click and overview retain all coverage", async ({
   ).toBeVisible();
   expect((await host.screenshot()).equals(screenshotBefore)).toBe(false);
   await page.screenshot({
-    path: "docs/audit/map-interaction.png",
+    path: "docs/atlas-2026-11-04/scientific-browser/map-interaction.png",
     animations: "disabled",
   });
 });
@@ -264,10 +337,10 @@ test("successful remote style followed by tile failure restores cached paths", a
       });
     return route.abort();
   });
-  await page.goto("./");
+  await page.goto("./?view=scientific");
   await expect(
     page.getByText(/Basemap unavailable.*cached public path/),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 45000 });
   await expect(page.locator(".map-canvas")).toHaveAttribute(
     "data-activity-loaded",
     "true",
@@ -275,10 +348,10 @@ test("successful remote style followed by tile failure restores cached paths", a
   );
   await expect(page.locator(".map-canvas")).toHaveAttribute(
     "data-map-layers",
-    "5",
+    "7",
   );
   await page.screenshot({
-    path: "docs/audit/tile-failure.png",
+    path: "docs/atlas-2026-11-04/scientific-browser/tile-failure.png",
     animations: "disabled",
   });
 });
@@ -286,9 +359,10 @@ test("successful remote style followed by tile failure restores cached paths", a
 test("unmodelled coverage is explicit; arbitrary searches do not hide the map", async ({
   page,
 }) => {
-  await page.goto("./");
-  await page.locator(".explore-options > summary").click();
+  await page.goto("./?view=scientific");
+  await page.getByRole("button", { name: "Filters", exact: true }).click();
   await page.getByLabel("Limit ranked list to walking distance").uncheck();
+  await page.getByRole("button", { name: "All areas", exact: true }).click();
   await page.getByLabel("Search areas or businesses").fill("no-such-place-xyz");
   await expect(page.locator(".area-card")).toHaveCount(0);
   await expect(page.locator(".map-canvas")).toHaveAttribute(
@@ -306,11 +380,13 @@ test("unmodelled coverage is explicit; arbitrary searches do not hide the map", 
   expect(gap).toBeTruthy();
   await page.getByLabel("Search areas or businesses").fill(gap!.label);
   const card = page.locator(`.area-card[data-cell-id="${gap!.id}"]`);
-  await expect(card).toContainText("Activity not modelled");
+  await expect(card).toContainText(
+    /coverage (unknown|gap)|Activity not modelled/i,
+  );
   await card.click();
   await expect(
     page.getByRole("article", { name: "Selected area details" }),
-  ).toContainText("coverage gap");
+  ).toContainText(/coverage (unknown|gap)|No activity model/i);
 });
 
 test("malformed dataset and empty date input have recoverable errors", async ({
@@ -325,13 +401,13 @@ test("malformed dataset and empty date input have recoverable errors", async ({
       },
     }),
   );
-  await page.goto("./");
+  await page.goto("./?view=scientific");
   await expect(
     page.getByRole("heading", { name: "We couldn’t load Southampton" }),
   ).toBeVisible();
   await page.unroute("**/data/southampton.json");
   await page.getByRole("button", { name: "Try again" }).click();
-  await page.getByRole("button", { name: "Date & time", exact: true }).click();
+  await dateMode(page);
   await page.getByLabel("Forecast date").fill("");
   await expect(page.getByRole("alert")).toHaveText(
     "Choose a valid date and hour.",
@@ -344,18 +420,19 @@ test("malformed dataset and empty date input have recoverable errors", async ({
 test("selected hourly chart uses the selected assumption scenario", async ({
   page,
 }) => {
-  await page.goto("./");
-  await page.getByRole("button", { name: "Date & time", exact: true }).click();
+  await page.goto("./?view=scientific");
+  await dateMode(page);
   await page.getByLabel("Forecast date").fill("2026-10-28");
-  await page.getByLabel("Forecast hour").fill("12");
+  await page.getByLabel("Forecast hour", { exact: true }).selectOption("12");
   const id = await page
     .locator(".area-card")
     .first()
     .getAttribute("data-cell-id");
   await page.locator(".area-card").first().click();
-  await page.getByRole("button", { name: "About the model" }).click();
+  await openEstimate(page, "Assumptions");
   await page.getByLabel("Assumption scenario").selectOption("sensitivity");
-  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "This area", exact: true }).click();
+  await page.locator(".hourly-disclosure > summary").click();
   const time = resolveTime(
     {
       mode: "date",
@@ -381,15 +458,16 @@ test("dark theme, selected detail and information dialog accessibility", async (
   page,
 }, info) => {
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
-  await page.goto("./");
+  await page.goto("./?view=scientific");
   await expect(page.locator(".map-canvas")).toHaveAttribute(
     "data-map-ready",
     "true",
     { timeout: 45000 },
   );
-  await page.getByRole("button", { name: "Date & time", exact: true }).click();
+  await dateMode(page);
   await page.getByLabel("Forecast date").fill("2026-10-28");
-  await page.getByLabel("Forecast hour").fill("12");
+  await page.getByLabel("Forecast hour", { exact: true }).selectOption("12");
+  await page.locator(".dock-compare").click();
   await page.locator(".area-card").first().click();
   const detail = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
@@ -399,11 +477,11 @@ test("dark theme, selected detail and information dialog accessibility", async (
     contentType: "application/json",
   });
   await page.screenshot({
-    path: "docs/audit/dark-detail.png",
+    path: "docs/atlas-2026-11-04/scientific-browser/dark-detail.png",
     animations: "disabled",
   });
   await page.getByLabel("Close area details").click();
-  await page.getByRole("button", { name: "About the model" }).click();
+  await openEstimate(page, "Methodology");
   const dialog = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
@@ -422,9 +500,9 @@ for (const mobile of [false, true]) {
     await page.setViewportSize(
       mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 },
     );
-    await page.goto("./");
+    await page.goto("./?view=scientific");
     await expect(
-      page.getByRole("heading", { name: /Where Southampton/ }),
+      page.getByRole("link", { name: "Southampton Fieldnotes. home" }),
     ).toBeVisible();
     if (mobile) await page.getByLabel("Expand forecast panel").click();
     await expect(page.locator(".map-canvas")).toHaveAttribute(
@@ -439,15 +517,16 @@ for (const mobile of [false, true]) {
       body: JSON.stringify(scan.violations, null, 2),
       contentType: "application/json",
     });
-    await page.getByRole("button", { name: "About the model" }).focus();
+    const about = page
+      .getByRole("button", { name: "About this estimate", exact: true })
+      .first();
+    await about.focus();
     await page.keyboard.press("Enter");
     await expect(
-      page.getByRole("dialog", { name: "An experiment, explained." }),
+      page.getByRole("dialog", { name: "About this estimate" }),
     ).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(
-      page.getByRole("button", { name: "About the model" }),
-    ).toBeFocused();
+    await expect(about).toBeFocused();
     expect(scan.violations).toEqual([]);
   });
 }

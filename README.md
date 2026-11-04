@@ -5,7 +5,12 @@ MapLibre and OpenFreeMap. Publicly published for GitHub Pages testing.
 Scientific model experimental-0.2.1 includes expanded destination functions,
 network allocation and separate aggregate residential context.
 
-Fieldnotes v2 adds a map-first explorer and mobile rankings/area sheet.
+The default Atlas view reproduces an approved supplied map illustration with fixed
+reference values (91.6, 92.0 and 28.3), native controls and image pan/zoom. It is
+explicitly illustrative, not live geography or a forecast. The full scientific
+explorer remains available through **Open scientific map** or `?view=scientific`,
+including editable forecast time, model ranking, saved areas and evidence tools.
+Illustrative values and session saves are separate from scientific calculations.
 Intensity is versioned separately as `intensity-1.0.0`; the raw scientific model,
 dataset, frozen reference and city rankings are preserved.
 
@@ -22,7 +27,8 @@ areas again where needed.
 
 ## Scientific limitations
 
-The main score is a continuous relative intensity index, displayed to one decimal:
+In the scientific explorer, the main score is a continuous relative intensity
+index, displayed to one decimal:
 `100 × raw / (raw + 0.7040438337879282)`. The fixed anchor is P90 of positive
 values in the retained `reference-55e49f63e2ca` quantile grid. Its activity level
 maps to50, four times it to80; the scale never refits to the selected hour or map.

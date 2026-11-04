@@ -4,23 +4,31 @@ test("desktop forecasts, filters, explanations and saved areas", async ({
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("./");
+  await page.goto("./?view=scientific");
   await expect(
-    page.getByRole("heading", { name: /Where Southampton/ }),
+    page.getByRole("link", { name: "Southampton Fieldnotes. home" }),
   ).toBeVisible();
+  await page.locator(".time-options > summary").click();
   await page.getByRole("button", { name: "Date & time", exact: true }).click();
+  await page.locator(".time-options > summary").click();
   await page.getByLabel("Forecast date").fill("2026-10-30");
-  await page.getByLabel("Forecast hour").fill("15");
+  await page.getByLabel("Forecast hour", { exact: true }).selectOption("15");
   await expect(page.locator(".area-card").first()).toBeVisible();
   const firstScore = await page
     .locator(".area-card .index-pill")
     .first()
     .textContent();
-  await page.locator(".explore-options > summary").click();
+  await page
+    .getByRole("button", { name: "About this estimate", exact: true })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Assumptions", exact: true }).click();
   await page.getByLabel("Map view", { exact: true }).selectOption("general");
+  await page.keyboard.press("Escape");
   await expect(page.locator(".area-card .index-pill").first()).toHaveText(
     firstScore!,
   );
+  await page.getByRole("button", { name: "Filters", exact: true }).click();
   await page.getByRole("button", { name: "Cafés & food", exact: true }).click();
   await expect(
     page.getByText(
@@ -37,10 +45,14 @@ test("desktop forecasts, filters, explanations and saved areas", async ({
     "true",
   );
   await page.getByLabel("Close area details").click();
-  await page.getByRole("button", { name: "About the model" }).click();
+  await page
+    .getByRole("button", { name: "About this estimate", exact: true })
+    .first()
+    .click();
   await expect(
-    page.getByRole("heading", { name: "An experiment, explained." }),
+    page.getByRole("heading", { name: "About this estimate" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Assumptions", exact: true }).click();
   await page.getByLabel("Assumption scenario").selectOption("sensitivity");
   await page.keyboard.press("Escape");
   await expect(page.locator("dialog")).not.toBeVisible();
@@ -48,7 +60,7 @@ test("desktop forecasts, filters, explanations and saved areas", async ({
     document.querySelector(".sidebar-scroll")!.scrollTop = 0;
   });
   await page.screenshot({
-    path: "test-results/desktop.png",
+    path: "docs/atlas-2026-11-04/scientific-browser/desktop-controls.png",
     fullPage: true,
     animations: "disabled",
   });
@@ -58,16 +70,18 @@ test("mobile controls, UK clock-change error and no overflow", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("./");
+  await page.goto("./?view=scientific");
   await expect(
-    page.getByRole("heading", { name: /Where Southampton/ }),
+    page.getByRole("link", { name: "Southampton Fieldnotes. home" }),
   ).toBeVisible();
-  await page.getByLabel("Expand forecast panel").click();
+  await page.locator(".time-options > summary").click();
   await page.getByRole("button", { name: "Date & time", exact: true }).click();
+  await page.locator(".time-options > summary").click();
   await page.getByLabel("Forecast date").fill("2026-03-29");
-  await page.getByLabel("Forecast hour").fill("1");
+  await page.getByLabel("Forecast hour", { exact: true }).selectOption("1");
   await expect(page.getByRole("alert")).toContainText("does not exist");
-  await page.getByLabel("Forecast hour").fill("15");
+  await page.getByLabel("Forecast hour", { exact: true }).selectOption("15");
+  await page.getByLabel("Expand forecast panel").click();
   await expect(page.locator(".area-card").first()).toBeVisible();
   expect(
     await page.evaluate(
@@ -76,7 +90,7 @@ test("mobile controls, UK clock-change error and no overflow", async ({
   ).toBe(true);
   await page.getByLabel("Collapse forecast panel").click();
   await page.screenshot({
-    path: "test-results/mobile.png",
+    path: "docs/atlas-2026-11-04/scientific-browser/mobile-controls.png",
     fullPage: true,
     animations: "disabled",
   });
@@ -87,7 +101,7 @@ test("dataset failure is explicit and never replaced by demo data", async ({
   await page.route("**/data/southampton.json", (route) =>
     route.fulfill({ status: 503, body: "Unavailable" }),
   );
-  await page.goto("./");
+  await page.goto("./?view=scientific");
   await expect(
     page.getByRole("heading", { name: "We couldn’t load Southampton" }),
   ).toBeVisible();
@@ -112,15 +126,15 @@ test("location is requested only on demand, denial and unavailable storage remai
       throw new Error("Storage blocked");
     };
   });
-  await page.goto("./");
+  await page.goto("./?view=scientific");
   await expect(
-    page.getByRole("heading", { name: /Where Southampton/ }),
+    page.getByRole("link", { name: "Southampton Fieldnotes. home" }),
   ).toBeVisible();
   expect(await page.evaluate(() => (window as any).__locationCalls ?? 0)).toBe(
     0,
   );
-  await page.locator(".explore-options > summary").click();
-  await page.getByLabel("Use my location").click();
+  await page.getByRole("button", { name: "Filters", exact: true }).click();
+  await page.locator(".scope-line").getByLabel("Use my location").click();
   await expect(
     page.getByText(
       "Location was not available. Your starting point has not changed.",

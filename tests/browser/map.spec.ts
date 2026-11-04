@@ -10,9 +10,9 @@ test("map renders a source-backed layer after basemap failure", async ({
   await page.route("https://tiles.openfreemap.org/**", (route) =>
     route.abort(),
   );
-  await page.goto("./");
+  await page.goto("./?view=scientific");
   await expect(
-    page.getByRole("heading", { name: /Where Southampton/ }),
+    page.getByRole("link", { name: "Southampton Fieldnotes. home" }),
   ).toBeVisible();
   try {
     await expect(page.locator(".map-canvas")).toHaveAttribute(
@@ -46,7 +46,7 @@ test("map renders a source-backed layer after basemap failure", async ({
     document.querySelector(".sidebar-scroll")!.scrollTop = 0;
   });
   await page.screenshot({
-    path: "test-results/map.png",
+    path: "docs/atlas-2026-11-04/scientific-browser/map.png",
     fullPage: true,
     animations: "disabled",
   });
