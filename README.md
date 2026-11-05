@@ -5,12 +5,12 @@ MapLibre and OpenFreeMap. Publicly published for GitHub Pages testing.
 Scientific model experimental-0.2.1 includes expanded destination functions,
 network allocation and separate aggregate residential context.
 
-The default Atlas view reproduces an approved supplied map illustration with fixed
-reference values (91.6, 92.0 and 28.3), native controls and image pan/zoom. It is
-explicitly illustrative, not live geography or a forecast. The full scientific
-explorer remains available through **Open scientific map** or `?view=scientific`,
-including editable forecast time, model ranking, saved areas and evidence tools.
-Illustrative values and session saves are separate from scientific calculations.
+Atlas opens directly to the working scientific map with editable date/hour,
+real search, filters, saved places, comparison and destination walking directions.
+The Atlas header, dark canvas and comparison dock frame the source-backed map.
+The supplied fixed illustration (91.6, 92.0 and 28.3) is retained only as an explicit
+reference at `?view=illustration`; its values never enter scientific calculations.
+`?view=scientific` remains a compatible link to the working map.
 Intensity is versioned separately as `intensity-1.0.0`; the raw scientific model,
 dataset, frozen reference and city rankings are preserved.
 

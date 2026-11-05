@@ -4,7 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 test("reference illustration keeps exact values and separates scientific forecasts", async ({
   page,
 }) => {
-  await page.goto("./");
+  await page.goto("./?view=illustration");
   await expect(page.locator(".ia-value")).toHaveText([
     "91.6/100",
     "92.0/100",
@@ -48,7 +48,7 @@ test("reference illustration keeps exact values and separates scientific forecas
 test("illustration search, comparison and saved controls operate on reference areas", async ({
   page,
 }) => {
-  await page.goto("./");
+  await page.goto("./?view=illustration");
   await page.getByRole("button", { name: "Compare (3)", exact: true }).click();
   await page
     .getByRole("button", { name: "Save Poundland", exact: true })
@@ -71,7 +71,7 @@ test("illustration keeps the image in bounds when zooming out after an edge drag
   page,
 }) => {
   await page.setViewportSize({ width: 1487, height: 1058 });
-  await page.goto("./");
+  await page.goto("./?view=illustration");
   for (let i = 0; i < 8; i++)
     await page
       .getByRole("button", { name: "Zoom illustration in", exact: true })
@@ -101,7 +101,7 @@ for (const width of [1487, 768, 390, 320]) {
     page,
   }) => {
     await page.setViewportSize({ width, height: width === 320 ? 640 : 1058 });
-    await page.goto("./");
+    await page.goto("./?view=illustration");
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

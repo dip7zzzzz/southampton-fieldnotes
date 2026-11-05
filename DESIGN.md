@@ -1,6 +1,6 @@
 ---
 name: "Southampton Fieldnotes — Atlas"
-description: "Midnight Atlas: an illustrated reference scene with a separate scientific explorer."
+description: "Midnight Atlas: a working scientific map with an optional illustrated reference."
 colors:
   canvas: "#04080c"
   header: "#050709"
@@ -124,7 +124,7 @@ components:
 
 Atlas places a luminous green map illustration between a compact midnight tool bar and a sculpted comparison dock. Electric blue marks the selected candidate; icy cyan carries Directions. The user selected the original Atlas reference (`.impeccable/mocks/atlas-approved.png`) and explicitly requested its supplied map illustration and reference values. This replaces the City Edition visual record with the implemented Atlas system.
 
-The default screen is an interactive illustration implemented in `src/IllustratedAtlas.tsx` and `src/illustrated-atlas.css`. Its supplied raster asset is `src/assets/atlas-illustration.png`; origin and drawn markers are embedded artwork. The complete scientific explorer remains accessible with `?view=scientific`, implemented by `src/App.tsx`, `src/atlas.css` and `src/components/ActivityMap.tsx`. PROJECT.md remains canonical product authority. These are distinct visual/data surfaces. This document records implementation, not scientific validation or an automated fidelity pass.
+The default screen is the functional Atlas scientific explorer, implemented by `src/App.tsx`, `src/atlas.css` and `src/components/ActivityMap.tsx`; `?view=scientific` remains compatible. The fixed reference illustration is available explicitly at `?view=illustration`, implemented in `src/IllustratedAtlas.tsx` and `src/illustrated-atlas.css`. Its supplied raster asset is `src/assets/atlas-illustration.png`; origin and drawn markers are embedded artwork. Phone destination selection opens its actionable detail sheet. Narrow short screens keep two-column toolbar controls; the four-column short layout is restricted to widths of at least560px. Touch inputs use16px type to avoid focus zoom. PROJECT.md remains canonical product authority. These are distinct visual/data surfaces. This document records implementation, not scientific validation or an automated fidelity pass.
 
 **Key Characteristics:**
 

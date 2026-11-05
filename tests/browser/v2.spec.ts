@@ -171,9 +171,14 @@ test("v2 mobile sheet touch gestures do not move map; map touch panning remains 
   await page.getByLabel("Forecast hour", { exact: true }).selectOption("12");
   await page.locator(".area-card").first().click();
   await expect(page.locator(".sidebar")).toBeVisible();
-  await expect(page.locator(".sidebar .candidate-row.selected")).toBeVisible();
+  await expect(
+    page.getByRole("article", { name: "Selected area details" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^Directions/ }),
+  ).toBeInViewport({ ratio: 1 });
   await expect(page.locator(".mobile-handle")).toHaveCount(1);
-  await expect(page.getByLabel("Expand forecast panel")).toBeVisible();
+  await expect(page.getByLabel("Collapse forecast panel")).toBeVisible();
   await expect(page.locator(".selected-disclosure")).toBeInViewport({
     ratio: 1,
   });
@@ -189,7 +194,12 @@ test("v2 mobile sheet touch gestures do not move map; map touch panning remains 
   await page.locator(".contributor-disclosure > summary").click();
   await expect(page.locator(".venue-row").first()).toBeVisible();
   await page.keyboard.press("Escape");
-  await page.getByLabel("Expand forecast panel").click();
+  if (
+    !(await page
+      .locator(".sidebar")
+      .evaluate((element) => element.classList.contains("expanded")))
+  )
+    await page.getByLabel("Expand forecast panel").click();
   await page.getByLabel("Close area details").click();
   if (
     !(await page

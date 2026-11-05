@@ -4,10 +4,11 @@ Live site: https://dip7zzzzz.github.io/southampton-fieldnotes/
 Repository: https://github.com/dip7zzzzz/southampton-fieldnotes
 The URL can be shared with an iPhone user; no GitHub account is needed to visit.
 
-Atlas opens with the approved supplied illustration and fixed reference values
-91.6/92.0/28.3. It is labelled illustrative. The scientific explorer is available at
-`https://dip7zzzzz.github.io/southampton-fieldnotes/?view=scientific`; it retains the
-map-first desktop explorer, mobile rankings/area sheet and
+Atlas opens directly to the functional scientific explorer. The existing
+`?view=scientific` link remains compatible; `?view=illustration` opens the fixed
+supplied reference image and values91.6/92.0/28.3. That reference is separate from
+model calculations. The functional map retains the Atlas desktop dock, mobile
+rankings/selected-destination sheet and
 separately versioned intensity-1.0.0 presentation. It preserves the scientific
 model, public dataset, frozen reference and unrounded city ranks described below.
 The existing Pages workflow remains the publication route; no source refresh,

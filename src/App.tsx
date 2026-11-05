@@ -149,6 +149,7 @@ export default function App() {
     [filtersOpen, setFiltersOpen] = useState(false),
     [allAreas, setAllAreas] = useState(false),
     [selectionView, setSelectionView] = useState(false),
+    [phoneLayout, setPhoneLayout] = useState(window.innerWidth <= 720),
     [compactWorkspace, setCompactWorkspace] = useState(false),
     [largeInterface, setLargeInterface] = useState(false),
     [sheetMotion, setSheetMotion] = useState(false);
@@ -213,6 +214,7 @@ export default function App() {
     const workspace = document.querySelector<HTMLElement>(".workspace");
     if (!header || !workspace) return;
     const resize = new ResizeObserver(() => {
+      setPhoneLayout(window.innerWidth <= 720);
       const large =
         parseFloat(
           getComputedStyle(
@@ -414,6 +416,8 @@ export default function App() {
   const slotFor = (id: string) => slots.find((s) => s.id === id);
   const inResults = new Set(ranked.map((c) => c.cell.id));
   const fullList = allAreas || savedOnly || !!query;
+  const showingSelection =
+    !!selected && selectionView && (fullList || phoneLayout);
   const visibleRows = fullList
     ? ranked.slice(0, resultLimit)
     : slots.flatMap((s) => {
@@ -451,13 +455,20 @@ export default function App() {
     // the full ranking still get their own geographic focus.
     if (cell && !slotFor(id))
       setFocus(data?.graph.nodes[cell.node].position ?? cell.centre);
-    setSheetOpen(keyboard || (window.innerWidth > 720 && sheetOpen));
+    const phone = window.innerWidth <= 720;
+    setSheetOpen(keyboard || phone || sheetOpen);
     setExplorerOpen(true);
     setSheetMotion(false);
-    if (!slotFor(id))
+    if (!slotFor(id) || phone)
       requestAnimationFrame(() => {
         const scroll = document.querySelector<HTMLElement>(".sidebar-scroll");
-        if (scroll) scroll.scrollTop = 0;
+        const detail = document.querySelector<HTMLElement>(".detail-card");
+        if (!scroll) return;
+        if (phone && detail)
+          scroll.scrollTop +=
+            detail.getBoundingClientRect().top -
+            scroll.getBoundingClientRect().top;
+        else scroll.scrollTop = 0;
       });
     if (keyboard)
       requestAnimationFrame(() =>
@@ -643,7 +654,7 @@ export default function App() {
       >
         <aside
           id="explorer"
-          className={`sidebar ${sheetOpen ? "expanded" : ""} ${fullList ? "showing-list" : ""} ${selected && (!slotFor(selected) || (fullList && selectionView)) ? "active-outside" : ""} ${fullList && selectionView && selected ? "full-selection" : ""}`}
+          className={`sidebar ${sheetOpen ? "expanded" : ""} ${fullList ? "showing-list" : ""} ${selected && (!slotFor(selected) || showingSelection) ? "active-outside" : ""} ${showingSelection ? "full-selection" : ""}`}
           aria-label="Places and active destination"
         >
           <button
@@ -1061,7 +1072,7 @@ export default function App() {
             )}
             {selectedCell && (
               <article
-                className={`detail-card ${slotFor(selectedCell.cell.id) && !(fullList && selectionView) ? "slot-active" : ""}`}
+                className={`detail-card ${slotFor(selectedCell.cell.id) && !showingSelection ? "slot-active" : ""}`}
                 aria-label="Selected area details"
               >
                 <div className="detail-topline">

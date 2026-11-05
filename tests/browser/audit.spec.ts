@@ -157,7 +157,12 @@ for (const size of [
       path: `docs/atlas-2026-11-04/scientific-browser/highfield-${size.width}.png`,
       animations: "disabled",
     });
-    if (size.width < 720)
+    if (
+      size.width < 720 &&
+      !(await page
+        .locator(".sidebar")
+        .evaluate((element) => element.classList.contains("expanded")))
+    )
       await page.getByLabel("Expand forecast panel").click();
     await details
       .getByRole("button", { name: "Start here", exact: true })

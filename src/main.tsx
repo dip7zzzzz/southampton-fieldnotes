@@ -6,10 +6,10 @@ import "./styles.css";
 import "./atlas.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    {new URLSearchParams(location.search).get("view") === "scientific" ? (
-      <App />
-    ) : (
+    {new URLSearchParams(location.search).get("view") === "illustration" ? (
       <IllustratedAtlas />
+    ) : (
+      <App />
     )}
   </React.StrictMode>,
 );

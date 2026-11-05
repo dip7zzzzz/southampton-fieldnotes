@@ -760,3 +760,8 @@
     transition: none;
   }
 }
+@media (pointer: coarse) {
+  .ia-search input {
+    font-size: 16px;
+  }
+}
